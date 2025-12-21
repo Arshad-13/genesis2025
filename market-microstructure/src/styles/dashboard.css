@@ -1,0 +1,46 @@
+body {
+  margin: 0;
+  background: #020617;
+  color: #e5e7eb;
+  font-family: Inter, sans-serif;
+}
+
+.container {
+  padding: 10px;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: #020617;
+  padding: 10px;
+}
+
+.content {
+  display: flex;
+  gap: 10px;
+}
+
+.main {
+  width: 75%;
+}
+
+.sidebar {
+  width: 25%;
+}
+
+.panel {
+  background: #020617;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  padding: 10px;
+}
+
+.alert {
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  padding: 10px;
+  border-radius: 4px;
+}
