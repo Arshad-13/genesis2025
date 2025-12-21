@@ -5,7 +5,7 @@ import FeaturePanel from "../components/FeaturePanel";
 import SnapshotInspector from "../components/SnapshotInspector";
 import PriceLadder from "../components/PriceLadder";
 
-export default function DashboardLayout() {
+export default function DashboardLayout({ data, latestSnapshot }) {
   return (
     <div className="container">
       <ControlsBar />
@@ -13,16 +13,28 @@ export default function DashboardLayout() {
       <div className="content">
         {/* LEFT 75% */}
         <div className="main">
-          <PriceChart />
-          <Heatmap />
-          <FeaturePanel title="Order Book Imbalance" />
-          <FeaturePanel title="Spread" />
+          <PriceChart data={data} />
+          <Heatmap data={data} />
+          <FeaturePanel 
+            title="Order Book Imbalance" 
+            data={data} 
+            dataKey="obi" 
+            color="#38bdf8" 
+            threshold={0.5}
+          />
+          <FeaturePanel 
+            title="Spread" 
+            data={data} 
+            dataKey="spread" 
+            color="#f472b6" 
+            isSpread={true}
+          />
         </div>
 
         {/* RIGHT 25% */}
         <div className="sidebar">
-          <SnapshotInspector />
-          <PriceLadder />
+          <SnapshotInspector snapshot={latestSnapshot} />
+          <PriceLadder snapshot={latestSnapshot} />
         </div>
       </div>
     </div>
