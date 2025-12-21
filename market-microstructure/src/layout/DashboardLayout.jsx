@@ -1,3 +1,4 @@
+import { useState } from "react";
 import ControlsBar from "../components/ControlsBar";
 import PriceChart from "../components/PriceChart";
 import Heatmap from "../components/Heatmap";
@@ -6,6 +7,12 @@ import SnapshotInspector from "../components/SnapshotInspector";
 import PriceLadder from "../components/PriceLadder";
 
 export default function DashboardLayout({ data, latestSnapshot }) {
+  const [hoveredSnapshot, setHoveredSnapshot] = useState(null);
+
+  // If user is hovering over heatmap, show that historical snapshot.
+  // Otherwise, show the latest live snapshot.
+  const activeSnapshot = hoveredSnapshot || latestSnapshot;
+
   return (
     <div className="container">
       <ControlsBar />
@@ -14,7 +21,7 @@ export default function DashboardLayout({ data, latestSnapshot }) {
         {/* LEFT 75% */}
         <div className="main">
           <PriceChart data={data} />
-          <Heatmap data={data} />
+          <Heatmap data={data} onHover={setHoveredSnapshot} />
           <FeaturePanel 
             title="Order Book Imbalance" 
             data={data} 
@@ -33,8 +40,8 @@ export default function DashboardLayout({ data, latestSnapshot }) {
 
         {/* RIGHT 25% */}
         <div className="sidebar">
-          <SnapshotInspector snapshot={latestSnapshot} />
-          <PriceLadder snapshot={latestSnapshot} />
+          <SnapshotInspector snapshot={activeSnapshot} />
+          <PriceLadder snapshot={activeSnapshot} />
         </div>
       </div>
     </div>

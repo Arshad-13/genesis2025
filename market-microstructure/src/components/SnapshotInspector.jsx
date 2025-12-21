@@ -37,10 +37,26 @@ export default function SnapshotInspector({ snapshot }) {
           <span>{snapshot.spread?.toFixed(4)}</span>
         </div>
         <div className="detail-row">
+          <span>Regime:</span>
+          <span style={{ fontWeight: 'bold', color: snapshot.regime === 0 ? '#4ade80' : '#f87171' }}>
+            {snapshot.regime_label || "Unknown"}
+          </span>
+        </div>
+        <div className="detail-row">
           <span>OBI:</span>
           <span className={snapshot.obi > 0 ? 'text-green' : 'text-red'}>
             {snapshot.obi?.toFixed(4)}
           </span>
+        </div>
+        <div className="detail-row">
+          <span>Divergence:</span>
+          <span className={snapshot.divergence > 0 ? 'text-green' : 'text-red'}>
+            {snapshot.divergence?.toFixed(4)}
+          </span>
+        </div>
+        <div className="detail-row">
+          <span>Dir. Prob:</span>
+          <span>{snapshot.directional_prob}%</span>
         </div>
         <div className="detail-row">
           <span>Best Bid Q:</span>

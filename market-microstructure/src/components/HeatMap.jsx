@@ -1,7 +1,7 @@
 import Plot from "react-plotly.js";
 import { useMemo } from "react";
 
-export default function Heatmap({ data = [] }) {
+export default function Heatmap({ data = [], onHover }) {
   // Transform data for Heatmap
   // We need to map (Time, Price) -> Volume
   // Since prices float, we bin them relative to the midprice or just plot levels.
@@ -63,7 +63,8 @@ export default function Heatmap({ data = [] }) {
             y: yData,
             type: "heatmap",
             colorscale: "Viridis",
-            showscale: true
+            showscale: true,
+            hoverinfo: "x+y+z"
           }
         ]}
         layout={{
@@ -73,10 +74,22 @@ export default function Heatmap({ data = [] }) {
           plot_bgcolor: "rgba(0,0,0,0)",
           font: { color: "#9ca3af" },
           xaxis: { showticklabels: false, title: "Time" },
-          yaxis: { title: "Depth Levels", tickfont: { size: 10 } }
+          yaxis: { title: "Depth Levels", tickfont: { size: 10 } },
+          hovermode: "closest"
         }}
         config={{ displayModeBar: false }}
         style={{ width: "100%" }}
+        onHover={(event) => {
+            if (onHover && event.points && event.points[0]) {
+                // Find the snapshot corresponding to the hovered x-value (timestamp)
+                const timestamp = event.points[0].x;
+                const snapshot = data.find(d => d.timestamp === timestamp);
+                if (snapshot) {
+                    onHover(snapshot);
+                }
+            }
+        }}
+        onUnhover={() => onHover && onHover(null)}
       />
     </div>
   );
