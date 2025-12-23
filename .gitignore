@@ -1,0 +1,20 @@
+backend/dataset/*.csv
+backend/loader/venv
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Node
+node_modules/
+dist/
+.env
+.DS_Store
+coverage/
