@@ -1,46 +1,158 @@
-body {
+/* ======================================================
+   ROOT & BASE
+====================================================== */
+
+html,
+body,
+#root {
   margin: 0;
+  padding: 0;
+  min-height: 100%;
   background: #020617;
   color: #e5e7eb;
-  font-family: Inter, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-.container {
-  padding: 10px;
-}
+/* ======================================================
+   SHELL
+====================================================== */
 
-.controls {
+.dashboard-shell {
+  min-height: 100vh;              /* ✅ allow page scroll */
   display: flex;
-  align-items: center;
-  gap: 20px;
+  flex-direction: column;
   background: #020617;
-  padding: 10px;
+  color: #e5e7eb;
 }
 
-.content {
-  display: flex;
-  gap: 10px;
+/* ======================================================
+   GRID LAYOUT
+====================================================== */
+
+.dashboard-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 3.2fr 1.3fr;
+  gap: 12px;
+  padding: 12px;
+  align-items: start;             /* 🔑 prevents stretch bugs */
 }
 
-.main {
-  width: 75%;
+/* ======================================================
+   LEFT COLUMN (NO SCROLL, FULLY VISIBLE)
+====================================================== */
+
+.left-column {
+  display: grid;
+  grid-template-rows: 240px 240px auto;
+  gap: 12px;
 }
 
-.sidebar {
-  width: 25%;
+/* ======================================================
+   RIGHT COLUMN (SCROLL ALLOWED)
+====================================================== */
+
+.right-column {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 12px;
+  max-height: calc(100vh - 72px); /* below controls bar */
 }
+
+.inspector-scroll,
+.ladder-scroll {
+  overflow-y: auto;
+}
+
+/* ======================================================
+   PANELS
+====================================================== */
 
 .panel {
   background: #020617;
   border: 1px solid #1e293b;
-  border-radius: 6px;
-  margin-bottom: 10px;
+  border-radius: 8px;
   padding: 10px;
 }
 
-.alert {
-  border: 1px solid #ef4444;
-  color: #ef4444;
-  padding: 10px;
+/* ======================================================
+   FEATURE PANEL CONTAINER
+====================================================== */
+
+.features-scroll {
+  overflow: visible; /* ✅ show all features */
+}
+
+/* ======================================================
+   CONTROLS BAR
+====================================================== */
+
+.controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  margin: 12px;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  background: #020617;
+}
+
+.controls-left,
+.controls-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ======================================================
+   BUTTONS
+====================================================== */
+
+.btn {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 4px;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #0f172a;
+  color: #e5e7eb;
+}
+
+.btn.buy {
+  background: #22c55e;
+  color: #022c22;
+}
+
+.btn.sell {
+  background: #ef4444;
+  color: #450a0a;
+}
+
+.btn:hover {
+  filter: brightness(1.1);
+}
+
+/* ======================================================
+   SLIDER
+====================================================== */
+
+.time-slider {
+  flex: 1;
+}
+
+/* ======================================================
+   SCROLLBAR (SUBTLE)
+====================================================== */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
   border-radius: 4px;
 }

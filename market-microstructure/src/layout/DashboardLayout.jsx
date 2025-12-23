@@ -14,43 +14,39 @@ export default function DashboardLayout({ data, latestSnapshot, onOrder }) {
   const activeSnapshot = hoveredSnapshot || latestSnapshot;
 
   return (
-    <div className="container">
-      <ControlsBar onOrder={onOrder} />
+  <div className="dashboard-shell">
+    <ControlsBar onOrder={onOrder} />
 
-      <div className="content">
-        {/* LEFT 75% */}
-        <div className="main">
-          <CanvasPriceChart data={data} height={250} />
-          <CanvasHeatmap data={data} height={250} onHover={setHoveredSnapshot} />
-          <FeaturePanel 
-            title="Order Book Imbalance" 
-            data={data} 
-            dataKey="obi" 
-            color="#38bdf8" 
-            threshold={0.5}
-          />
-          <FeaturePanel 
-            title="Spread" 
-            data={data} 
-            dataKey="spread" 
-            color="#f472b6" 
-            isSpread={true}
-          />
-          <FeaturePanel 
-            title="V-PIN (Toxic Flow)" 
-            data={data} 
-            dataKey="vpin" 
-            color="#ef4444" 
-            threshold={0.4}
-          />
+    <div className="dashboard-grid">
+      {/* Left Column */}
+      <div className="left-column">
+        <div className="panel fixed price">
+          <CanvasPriceChart data={data} height={220} />
         </div>
 
-        {/* RIGHT 25% */}
-        <div className="sidebar">
+        <div className="panel fixed heatmap">
+          <CanvasHeatmap data={data} height={220} onHover={setHoveredSnapshot} />
+        </div>
+
+        <div className="panel features-scroll">
+          <FeaturePanel title="Order Book Imbalance" data={data} dataKey="obi" color="#38bdf8" threshold={0.5} />
+          <FeaturePanel title="Spread" data={data} dataKey="spread" color="#f472b6" isSpread />
+          <FeaturePanel title="V-PIN (Toxic Flow)" data={data} dataKey="vpin" color="#ef4444" threshold={0.4} />
+        </div>
+      </div>
+
+      {/* Right Column */}
+      <div className="right-column">
+        <div className="panel inspector-scroll">
           <SnapshotInspector snapshot={activeSnapshot} />
+        </div>
+
+        <div className="panel ladder-scroll">
           <PriceLadder snapshot={activeSnapshot} />
         </div>
       </div>
     </div>
-  );
+  </div>
+);
+
 }
