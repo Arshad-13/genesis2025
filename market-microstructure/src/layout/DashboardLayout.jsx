@@ -6,16 +6,13 @@ import FeaturePanel from "../components/FeaturePanel";
 import SnapshotInspector from "../components/SnapshotInspector";
 import PriceLadder from "../components/PriceLadder";
 
-export default function DashboardLayout({ data, latestSnapshot, onOrder }) {
+export default function DashboardLayout({ data, latestSnapshot }) {
   const [hoveredSnapshot, setHoveredSnapshot] = useState(null);
-
-  // If user is hovering over heatmap, show that historical snapshot.
-  // Otherwise, show the latest live snapshot.
   const activeSnapshot = hoveredSnapshot || latestSnapshot;
 
   return (
   <div className="dashboard-shell">
-    <ControlsBar onOrder={onOrder} />
+    <ControlsBar />
 
     <div className="dashboard-grid">
       {/* Left Column */}
@@ -31,7 +28,6 @@ export default function DashboardLayout({ data, latestSnapshot, onOrder }) {
         <div className="panel features-scroll">
           <FeaturePanel title="Order Book Imbalance" data={data} dataKey="obi" color="#38bdf8" threshold={0.5} />
           <FeaturePanel title="Spread" data={data} dataKey="spread" color="#f472b6" isSpread />
-          <FeaturePanel title="V-PIN (Toxic Flow)" data={data} dataKey="vpin" color="#ef4444" threshold={0.4} />
         </div>
       </div>
 
@@ -48,5 +44,4 @@ export default function DashboardLayout({ data, latestSnapshot, onOrder }) {
     </div>
   </div>
 );
-
 }
