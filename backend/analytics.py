@@ -5,6 +5,8 @@ from sklearn.cluster import KMeans
 from collections import deque, defaultdict
 import hashlib
 from typing import Dict, List, Tuple, Optional
+import threading
+import time
 
 class DataValidator:
     """Validates market data snapshots for sanity and completeness."""
@@ -335,6 +337,12 @@ class AnalyticsEngine:
         self.last_train_time = datetime.now()
         self.regime_labels = {0: "Calm", 1: "Stressed", 2: "Execution Hot", 3: "Manipulation Suspected"}
         
+        # Background Training
+        self.training_lock = threading.Lock()
+        self.training_in_progress = False
+        self.cluster_map = {}
+        self.pending_training = False
+        
         # Feature G: Microprice Divergence
         self.tick_size = 0.01
         
@@ -362,8 +370,38 @@ class AnalyticsEngine:
         self.avg_spread_sq = 0.0025
         self.avg_l1_vol = 10.0
         self.alpha = 0.05 # Smoothing factor
+    
+    def _train_kmeans_background(self, feature_data):
+        """Train K-Means in background thread to avoid blocking."""
+        try:
+            self.training_in_progress = True
+            
+            # Create a new model instance for training
+            new_kmeans = KMeans(n_clusters=4, random_state=42, n_init=10)
+            new_kmeans.fit(feature_data)
+            
+            # Calculate cluster mapping
+            centers = new_kmeans.cluster_centers_
+            stress_scores = centers[:, 0] + centers[:, 2] + centers[:, 3]
+            sorted_indices = np.argsort(stress_scores)
+            new_cluster_map = {original_idx: new_rank for new_rank, original_idx in enumerate(sorted_indices)}
+            
+            # Atomically update the model
+            with self.training_lock:
+                self.kmeans = new_kmeans
+                self.cluster_map = new_cluster_map
+                self.is_fitted = True
+                self.last_train_time = datetime.now()
+        
+        except Exception as e:
+            print(f"Background K-Means training failed: {e}")
+        finally:
+            self.training_in_progress = False
+            self.pending_training = False
 
     def process_snapshot(self, snapshot):
+        processing_start = time.time()
+        
         # Validate input data
         is_valid, validation_errors = DataValidator.validate_snapshot(snapshot)
         
@@ -493,20 +531,30 @@ class AnalyticsEngine:
         # Clustering
         regime = 0
         if len(self.feature_history) > 50:
-            if not self.is_fitted or (datetime.now() - self.last_train_time).seconds > 10:
-                X = np.array(self.feature_history)
-                self.kmeans.fit(X)
-                self.is_fitted = True
-                self.last_train_time = datetime.now()
-                
-                centers = self.kmeans.cluster_centers_
-                # Stress score = Spread Z + Volatility + OFI Impact
-                stress_scores = centers[:, 0] + centers[:, 2] + centers[:, 3]
-                sorted_indices = np.argsort(stress_scores)
-                self.cluster_map = {original_idx: new_rank for new_rank, original_idx in enumerate(sorted_indices)}
-
-            raw_cluster = self.kmeans.predict([feature_vector])[0]
-            regime = self.cluster_map.get(raw_cluster, 0)
+            # Check if we need to retrain (every 10 seconds)
+            should_retrain = (not self.is_fitted or 
+                            (datetime.now() - self.last_train_time).seconds > 10)
+            
+            # Trigger background training if needed and not already running
+            if should_retrain and not self.training_in_progress and not self.pending_training:
+                self.pending_training = True
+                X = np.array(list(self.feature_history))  # Copy data
+                training_thread = threading.Thread(
+                    target=self._train_kmeans_background,
+                    args=(X,),
+                    daemon=True
+                )
+                training_thread.start()
+            
+            # Use existing model for prediction (non-blocking)
+            if self.is_fitted:
+                with self.training_lock:
+                    try:
+                        raw_cluster = self.kmeans.predict([feature_vector])[0]
+                        regime = self.cluster_map.get(raw_cluster, 0)
+                    except Exception as e:
+                        # If prediction fails, default to regime 0
+                        regime = 0
             
         snapshot['regime'] = regime
         snapshot['regime_label'] = self.regime_labels.get(regime, "Unknown")
@@ -615,6 +663,16 @@ class AnalyticsEngine:
             self.last_cleanup_time = current_time
         
         snapshot['anomalies'] = filtered_anomalies
+        
+        # Processing time budget check
+        processing_time_ms = (time.time() - processing_start) * 1000
+        if processing_time_ms > 100:  # Warn if processing takes > 100ms
+            snapshot['anomalies'].append({
+                'type': 'PROCESSING_SLOW',
+                'severity': 'medium',
+                'message': f'Slow processing: {processing_time_ms:.1f}ms'
+            })
+        
         return snapshot
     
 def db_row_to_snapshot(row):

@@ -8,7 +8,7 @@ import pandas as pd
 
 from analytics import AnalyticsEngine, db_row_to_snapshot, MarketSimulator
 from replay import ReplayController
-from db import get_connection
+from db import get_connection, return_connection
 
 from datetime import datetime
 from decimal import Decimal
@@ -291,6 +291,23 @@ async def replay_loop():
         cur = conn.cursor()
         MODE = "REPLAY"
         logger.info("Connected to DB. Starting Replay Loop.")
+        
+        # Prepare common queries for better performance
+        QUERY_FIRST = """
+            SELECT *
+            FROM l2_orderbook
+            ORDER BY ts
+            LIMIT 1
+        """
+        
+        QUERY_NEXT = """
+            SELECT *
+            FROM l2_orderbook
+            WHERE ts > %s
+            ORDER BY ts
+            LIMIT 1
+        """
+        
     except Exception as e:
         logger.warning(f"DB Connection failed: {e}")
         logger.info("Checking for CSV dataset...")
@@ -319,20 +336,9 @@ async def replay_loop():
             continue
 
         if controller.cursor_ts is None:
-            cur.execute("""
-                SELECT *
-                FROM l2_orderbook
-                ORDER BY ts
-                LIMIT 1
-            """)
+            cur.execute(QUERY_FIRST)
         else:
-            cur.execute("""
-                SELECT *
-                FROM l2_orderbook
-                WHERE ts > %s
-                ORDER BY ts
-                LIMIT 1
-            """, (controller.cursor_ts,))
+            cur.execute(QUERY_NEXT, (controller.cursor_ts,))
 
         row = cur.fetchone()
 
