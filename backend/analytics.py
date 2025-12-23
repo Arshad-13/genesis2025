@@ -2,7 +2,203 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 from sklearn.cluster import KMeans
-from collections import deque
+from collections import deque, defaultdict
+import hashlib
+from typing import Dict, List, Tuple, Optional
+
+class DataValidator:
+    """Validates market data snapshots for sanity and completeness."""
+    
+    @staticmethod
+    def validate_snapshot(snapshot: dict) -> Tuple[bool, List[str]]:
+        """Validate a market snapshot. Returns (is_valid, list_of_errors)."""
+        errors = []
+        
+        # Check required fields
+        required_fields = ['bids', 'asks', 'mid_price']
+        for field in required_fields:
+            if field not in snapshot:
+                errors.append(f"Missing required field: {field}")
+        
+        if errors:  # Can't continue validation without basic fields
+            return False, errors
+        
+        bids = snapshot['bids']
+        asks = snapshot['asks']
+        mid_price = snapshot['mid_price']
+        
+        # Validate bids
+        if not isinstance(bids, list) or len(bids) == 0:
+            errors.append("Bids must be a non-empty list")
+        else:
+            for i, bid in enumerate(bids[:10]):  # Check first 10 levels
+                if not isinstance(bid, list) or len(bid) != 2:
+                    errors.append(f"Bid level {i} must be [price, volume]")
+                    continue
+                    
+                price, volume = bid
+                if not DataValidator._is_valid_number(price) or price <= 0:
+                    errors.append(f"Bid level {i}: Invalid price {price}")
+                if not DataValidator._is_valid_number(volume) or volume < 0:
+                    errors.append(f"Bid level {i}: Invalid volume {volume}")
+        
+        # Validate asks
+        if not isinstance(asks, list) or len(asks) == 0:
+            errors.append("Asks must be a non-empty list")
+        else:
+            for i, ask in enumerate(asks[:10]):
+                if not isinstance(ask, list) or len(ask) != 2:
+                    errors.append(f"Ask level {i} must be [price, volume]")
+                    continue
+                    
+                price, volume = ask
+                if not DataValidator._is_valid_number(price) or price <= 0:
+                    errors.append(f"Ask level {i}: Invalid price {price}")
+                if not DataValidator._is_valid_number(volume) or volume < 0:
+                    errors.append(f"Ask level {i}: Invalid volume {volume}")
+        
+        # Validate mid_price
+        if not DataValidator._is_valid_number(mid_price) or mid_price <= 0:
+            errors.append(f"Invalid mid_price: {mid_price}")
+        
+        # Cross-validation: bid < ask
+        if len(bids) > 0 and len(asks) > 0 and not errors:
+            best_bid = bids[0][0]
+            best_ask = asks[0][0]
+            
+            if DataValidator._is_valid_number(best_bid) and DataValidator._is_valid_number(best_ask):
+                if best_bid >= best_ask:
+                    errors.append(f"Invalid book: best_bid ({best_bid}) >= best_ask ({best_ask})")
+                
+                spread = best_ask - best_bid
+                if spread < 0:
+                    errors.append(f"Negative spread: {spread}")
+                elif spread > best_ask * 0.1:  # Spread > 10% of price is suspicious
+                    errors.append(f"Suspiciously wide spread: {spread} ({spread/best_ask*100:.1f}%)")
+        
+        return len(errors) == 0, errors
+    
+    @staticmethod
+    def _is_valid_number(value) -> bool:
+        """Check if value is a valid number (not NaN, not Inf)."""
+        try:
+            if value is None:
+                return False
+            if isinstance(value, (int, float)):
+                return not (np.isnan(value) or np.isinf(value))
+            return False
+        except (TypeError, ValueError):
+            return False
+    
+    @staticmethod
+    def sanitize_snapshot(snapshot: dict) -> dict:
+        """Attempt to fix common issues in snapshot data."""
+        # Ensure numeric fields are clean
+        if 'mid_price' in snapshot:
+            snapshot['mid_price'] = DataValidator._sanitize_number(snapshot['mid_price'], default=100.0)
+        
+        # Clean bids and asks
+        if 'bids' in snapshot:
+            snapshot['bids'] = [
+                [DataValidator._sanitize_number(p, 100.0), DataValidator._sanitize_number(v, 0.0)]
+                for p, v in snapshot['bids']
+            ]
+        
+        if 'asks' in snapshot:
+            snapshot['asks'] = [
+                [DataValidator._sanitize_number(p, 100.0), DataValidator._sanitize_number(v, 0.0)]
+                for p, v in snapshot['asks']
+            ]
+        
+        return snapshot
+    
+    @staticmethod
+    def _sanitize_number(value, default=0.0):
+        """Replace invalid numbers with default."""
+        if DataValidator._is_valid_number(value):
+            return float(value)
+        return default
+from typing import Dict, List, Tuple, Optional
+
+class AlertManager:
+    """Manages alert deduplication, severity escalation, and audit logging."""
+    def __init__(self, dedup_window_seconds=5):
+        self.dedup_window = dedup_window_seconds
+        self.recent_alerts = {}  # alert_hash -> last_seen_timestamp
+        self.alert_history = deque(maxlen=1000)  # Audit log
+        self.alert_counts = defaultdict(int)  # Counter per alert type
+        self.escalation_thresholds = {
+            "SPOOFING": 3,  # Escalate to critical after 3 occurrences
+            "DEPTH_SHOCK": 2,
+            "HEAVY_IMBALANCE": 5
+        }
+        
+    def _hash_alert(self, alert):
+        """Generate unique hash for alert deduplication."""
+        key = f"{alert['type']}_{alert['message']}"
+        return hashlib.md5(key.encode()).hexdigest()
+    
+    def should_suppress(self, alert, current_time):
+        """Check if alert should be suppressed due to recent occurrence."""
+        alert_hash = self._hash_alert(alert)
+        
+        if alert_hash in self.recent_alerts:
+            last_seen = self.recent_alerts[alert_hash]
+            time_diff = (current_time - last_seen).total_seconds()
+            
+            if time_diff < self.dedup_window:
+                return True  # Suppress duplicate
+        
+        # Update last seen time
+        self.recent_alerts[alert_hash] = current_time
+        return False
+    
+    def escalate_severity(self, alert):
+        """Escalate alert severity based on frequency."""
+        alert_type = alert['type']
+        self.alert_counts[alert_type] += 1
+        
+        if alert_type in self.escalation_thresholds:
+            threshold = self.escalation_thresholds[alert_type]
+            if self.alert_counts[alert_type] >= threshold:
+                if alert['severity'] == 'high':
+                    alert['severity'] = 'critical'
+                    alert['message'] += f" [ESCALATED: {self.alert_counts[alert_type]} occurrences]"
+                elif alert['severity'] == 'medium':
+                    alert['severity'] = 'high'
+        
+        return alert
+    
+    def log_alert(self, alert, timestamp):
+        """Add alert to audit log."""
+        self.alert_history.append({
+            "timestamp": timestamp,
+            "type": alert['type'],
+            "severity": alert['severity'],
+            "message": alert['message']
+        })
+    
+    def get_alert_history(self, limit=100):
+        """Retrieve recent alert history."""
+        return list(self.alert_history)[-limit:]
+    
+    def get_alert_stats(self):
+        """Get statistics about alerts."""
+        return {
+            "total_alerts_logged": len(self.alert_history),
+            "alert_counts_by_type": dict(self.alert_counts),
+            "active_deduplications": len(self.recent_alerts)
+        }
+    
+    def cleanup_old_deduplications(self, current_time):
+        """Remove expired deduplication entries to prevent memory leak."""
+        to_remove = []
+        for alert_hash, last_seen in self.recent_alerts.items():
+            if (current_time - last_seen).total_seconds() > self.dedup_window * 2:
+                to_remove.append(alert_hash)
+        
+        for alert_hash in to_remove:
+            del self.recent_alerts[alert_hash]
 
 class MarketSimulator:
     def __init__(self):
@@ -128,6 +324,10 @@ class AnalyticsEngine:
         self.history = []
         self.window_size = 600 
         
+        # Alert Management
+        self.alert_manager = AlertManager(dedup_window_seconds=5)
+        self.last_cleanup_time = datetime.now()
+        
         # Feature F: Market State Clusters
         self.feature_history = deque(maxlen=600)
         self.kmeans = KMeans(n_clusters=4, random_state=42, n_init=10)
@@ -164,6 +364,27 @@ class AnalyticsEngine:
         self.alpha = 0.05 # Smoothing factor
 
     def process_snapshot(self, snapshot):
+        # Validate input data
+        is_valid, validation_errors = DataValidator.validate_snapshot(snapshot)
+        
+        if not is_valid:
+            # Log validation errors
+            print(f"WARNING: Data validation failed: {validation_errors}")
+            # Attempt to sanitize
+            snapshot = DataValidator.sanitize_snapshot(snapshot)
+            # Re-validate
+            is_valid, validation_errors = DataValidator.validate_snapshot(snapshot)
+            if not is_valid:
+                # Still invalid, return minimal safe snapshot
+                return {
+                    **snapshot,
+                    'anomalies': [{
+                        'type': 'DATA_VALIDATION_ERROR',
+                        'severity': 'critical',
+                        'message': f"Invalid data: {', '.join(validation_errors[:3])}"
+                    }]
+                }
+        
         bids = snapshot['bids']
         asks = snapshot['asks']
         
@@ -217,11 +438,12 @@ class AnalyticsEngine:
             w_obi_ask += asks[i][1] * weight
             total_w += (bids[i][1] + asks[i][1]) * weight
             
-        obi = (w_obi_bid - w_obi_ask) / total_w if total_w > 0 else 0
+        # Safe division
+        obi = (w_obi_bid - w_obi_ask) / total_w if total_w > 1e-9 else 0
         
         # Microprice
         total_q_1 = best_bid_q + best_ask_q
-        if total_q_1 > 0:
+        if total_q_1 > 1e-9:  # Safe threshold
             microprice = (best_bid_q * best_ask_px + best_ask_q * best_bid_px) / total_q_1
         else:
             microprice = (best_ask_px + best_bid_px) / 2
@@ -261,7 +483,8 @@ class AnalyticsEngine:
         self.avg_spread_sq = (1 - self.alpha) * self.avg_spread_sq + self.alpha * (spread ** 2)
         std_spread = np.sqrt(max(0, self.avg_spread_sq - self.avg_spread**2))
         
-        spread_z = (spread - self.avg_spread) / (std_spread if std_spread > 1e-6 else 0.01)
+        # Safe division with minimum threshold
+        spread_z = (spread - self.avg_spread) / max(std_spread, 1e-6)
         
         # Updated Feature Vector with OFI
         feature_vector = [spread_z, abs(obi), volatility, abs(ofi_normalized)]
@@ -310,7 +533,7 @@ class AnalyticsEngine:
         total_bid_depth = sum(b[1] for b in bids)
         total_ask_depth = sum(a[1] for a in asks)
         
-        if self.prev_total_bid_depth > 0:
+        if self.prev_total_bid_depth > 1e-9:  # Safe threshold
             bid_drop = (self.prev_total_bid_depth - total_bid_depth) / self.prev_total_bid_depth
             ask_drop = (self.prev_total_ask_depth - total_ask_depth) / self.prev_total_ask_depth
             
@@ -373,7 +596,25 @@ class AnalyticsEngine:
                 "message": f"Market Regime: CRITICAL/MANIPULATION"
             })
         
-        snapshot['anomalies'] = anomalies
+        # Process alerts through AlertManager
+        current_time = datetime.now()
+        filtered_anomalies = []
+        
+        for alert in anomalies:
+            # Check deduplication
+            if not self.alert_manager.should_suppress(alert, current_time):
+                # Escalate if needed
+                alert = self.alert_manager.escalate_severity(alert)
+                # Log to audit trail
+                self.alert_manager.log_alert(alert, snapshot.get('timestamp', current_time.isoformat()))
+                filtered_anomalies.append(alert)
+        
+        # Periodic cleanup of old deduplication entries
+        if (current_time - self.last_cleanup_time).total_seconds() > 60:
+            self.alert_manager.cleanup_old_deduplications(current_time)
+            self.last_cleanup_time = current_time
+        
+        snapshot['anomalies'] = filtered_anomalies
         return snapshot
     
 def db_row_to_snapshot(row):

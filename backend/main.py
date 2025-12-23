@@ -464,6 +464,16 @@ def get_anomalies():
                 })
     return anomalies
 
+@app.get("/alerts/history")
+def get_alert_history(limit: int = 100):
+    """Get alert audit log with optional limit."""
+    return engine.alert_manager.get_alert_history(limit)
+
+@app.get("/alerts/stats")
+def get_alert_stats():
+    """Get alert statistics and counts."""
+    return engine.alert_manager.get_alert_stats()
+
 @app.get("/snapshot/latest")
 def get_latest_snapshot():
     if not data_buffer:
