@@ -5,6 +5,7 @@ import CanvasHeatmap from "../components/CanvasHeatmap";
 import FeaturePanel from "../components/FeaturePanel";
 import SnapshotInspector from "../components/SnapshotInspector";
 import PriceLadder from "../components/PriceLadder";
+import SignalMonitor from "../components/SignalMonitor";
 
 export default function DashboardLayout({ data, latestSnapshot }) {
   const [hoveredSnapshot, setHoveredSnapshot] = useState(null);
@@ -26,6 +27,7 @@ export default function DashboardLayout({ data, latestSnapshot }) {
         </div>
 
         <div className="panel features-scroll">
+          <SignalMonitor snapshot={latestSnapshot} />
           <FeaturePanel title="Order Book Imbalance" data={data} dataKey="obi" color="#38bdf8" threshold={0.5} />
           <FeaturePanel title="Spread" data={data} dataKey="spread" color="#f472b6" isSpread />
         </div>

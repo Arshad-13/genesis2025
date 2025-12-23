@@ -151,6 +151,18 @@ class AnalyticsEngine:
         self.current_bucket_sell = 0
         self.bucket_history = deque(maxlen=50) # Rolling window of Order Imbalances (OI)
 
+        # Feature C, D, E State
+        self.prev_bids = []
+        self.prev_asks = []
+        self.prev_total_bid_depth = 0
+        self.prev_total_ask_depth = 0
+        
+        # Dynamic Baselines (EWMA)
+        self.avg_spread = 0.05
+        self.avg_spread_sq = 0.0025
+        self.avg_l1_vol = 10.0
+        self.alpha = 0.05 # Smoothing factor
+
     def process_snapshot(self, snapshot):
         bids = snapshot['bids']
         asks = snapshot['asks']
@@ -188,45 +200,24 @@ class AnalyticsEngine:
         ofi_normalized = np.clip(ofi / 500, -1, 1) # Assuming avg size ~500
 
         # --- Feature H: V-PIN Calculation ---
-        trade_vol = snapshot.get('trade_volume', 0)
-        trade_dir = snapshot.get('trade_direction', 0)
-        
-        if trade_vol > 0:
-            self.current_bucket_vol += trade_vol
-            if trade_dir == 1:
-                self.current_bucket_buy += trade_vol
-            elif trade_dir == -1:
-                self.current_bucket_sell += trade_vol
-                
-            # Check if bucket is full
-            if self.current_bucket_vol >= self.bucket_size:
-                # Calculate Order Imbalance for this bucket
-                oi = abs(self.current_bucket_buy - self.current_bucket_sell)
-                self.bucket_history.append(oi)
-                
-                # Reset bucket (Carry over excess logic omitted for simplicity, just reset)
-                self.current_bucket_vol = 0
-                self.current_bucket_buy = 0
-                self.current_bucket_sell = 0
-        
-        # Calculate V-PIN
+        # Removed as per user request (Data does not support trade volume)
         vpin = 0
-        if len(self.bucket_history) > 0:
-            # V-PIN = Sum(|OI|) / (N * BucketSize)
-            # Or more accurately: Sum(|OI|) / Sum(TotalVolume)
-            # Since TotalVolume per bucket is roughly BucketSize
-            total_oi = sum(self.bucket_history)
-            total_vol = len(self.bucket_history) * self.bucket_size
-            vpin = total_oi / total_vol
             
         spread = best_ask_px - best_bid_px
         mid_price = snapshot['mid_price']
         
-        # Multi-level Weighted OBI
-        sum_bid_q = sum(b[1] for b in bids[:5])
-        sum_ask_q = sum(a[1] for a in asks[:5])
-        total_q_5 = sum_bid_q + sum_ask_q
-        obi = (sum_bid_q - sum_ask_q) / total_q_5 if total_q_5 > 0 else 0
+        # Multi-level Weighted OBI (Level 1 has more weight)
+        w_obi_bid = 0
+        w_obi_ask = 0
+        total_w = 0
+        
+        for i in range(min(5, len(bids))):
+            weight = np.exp(-0.5 * i) # Decay weight: 1.0, 0.6, 0.36...
+            w_obi_bid += bids[i][1] * weight
+            w_obi_ask += asks[i][1] * weight
+            total_w += (bids[i][1] + asks[i][1]) * weight
+            
+        obi = (w_obi_bid - w_obi_ask) / total_w if total_w > 0 else 0
         
         # Microprice
         total_q_1 = best_bid_q + best_ask_q
@@ -265,9 +256,12 @@ class AnalyticsEngine:
             log_returns = np.diff(np.log(prices))
             volatility = np.std(log_returns) * 1000
             
-        spread_mean = 0.05
-        spread_std = 0.02
-        spread_z = (spread - spread_mean) / spread_std
+        # Dynamic Spread Z-Score
+        self.avg_spread = (1 - self.alpha) * self.avg_spread + self.alpha * spread
+        self.avg_spread_sq = (1 - self.alpha) * self.avg_spread_sq + self.alpha * (spread ** 2)
+        std_spread = np.sqrt(max(0, self.avg_spread_sq - self.avg_spread**2))
+        
+        spread_z = (spread - self.avg_spread) / (std_spread if std_spread > 1e-6 else 0.01)
         
         # Updated Feature Vector with OFI
         feature_vector = [spread_z, abs(obi), volatility, abs(ofi_normalized)]
@@ -296,6 +290,70 @@ class AnalyticsEngine:
 
         # Anomalies
         anomalies = []
+        
+        # --- Feature C: Liquidity Gaps ---
+        gaps = []
+        for i in range(min(5, len(bids))): 
+            if bids[i][1] < 0.5: # Threshold for "tiny" liquidity
+                gaps.append(f"Bid L{i+1}")
+            if asks[i][1] < 0.5:
+                gaps.append(f"Ask L{i+1}")
+        
+        if gaps:
+             anomalies.append({
+                "type": "LIQUIDITY_GAP",
+                "severity": "medium",
+                "message": f"Liquidity Gaps: {', '.join(gaps)}"
+            })
+
+        # --- Feature E: Depth Shocks ---
+        total_bid_depth = sum(b[1] for b in bids)
+        total_ask_depth = sum(a[1] for a in asks)
+        
+        if self.prev_total_bid_depth > 0:
+            bid_drop = (self.prev_total_bid_depth - total_bid_depth) / self.prev_total_bid_depth
+            ask_drop = (self.prev_total_ask_depth - total_ask_depth) / self.prev_total_ask_depth
+            
+            if bid_drop > 0.3 or ask_drop > 0.3:
+                anomalies.append({
+                    "type": "DEPTH_SHOCK",
+                    "severity": "high",
+                    "message": f"Depth Shock! (Bid: -{bid_drop:.0%}, Ask: -{ask_drop:.0%})"
+                })
+
+        # --- Feature D: Spoofing-like Behavior ---
+        # Detect large orders at Top of Book (L1) that disappear without price movement
+        # Update rolling average of L1 volume
+        current_l1_vol = (bids[0][1] + asks[0][1]) / 2
+        self.avg_l1_vol = (1 - self.alpha) * self.avg_l1_vol + self.alpha * current_l1_vol
+        
+        if self.prev_bids and len(self.prev_bids) > 0:
+            prev_L1_vol = self.prev_bids[0][1]
+            curr_L1_vol = bids[0][1]
+            # If volume was large (> 2x Average) and is now small (< 0.2x Average) AND price is same
+            if prev_L1_vol > (2 * self.avg_l1_vol) and curr_L1_vol < (0.2 * self.avg_l1_vol) and abs(bids[0][0] - self.prev_bids[0][0]) < 0.001:
+                 anomalies.append({
+                    "type": "SPOOFING",
+                    "severity": "critical",
+                    "message": "Potential Spoofing (Large Bid Cancelled)"
+                })
+                
+        if self.prev_asks and len(self.prev_asks) > 0:
+            prev_L1_vol = self.prev_asks[0][1]
+            curr_L1_vol = asks[0][1]
+            if prev_L1_vol > (2 * self.avg_l1_vol) and curr_L1_vol < (0.2 * self.avg_l1_vol) and abs(asks[0][0] - self.prev_asks[0][0]) < 0.001:
+                 anomalies.append({
+                    "type": "SPOOFING",
+                    "severity": "critical",
+                    "message": "Potential Spoofing (Large Ask Cancelled)"
+                })
+
+        # Update State
+        self.prev_bids = bids
+        self.prev_asks = asks
+        self.prev_total_bid_depth = total_bid_depth
+        self.prev_total_ask_depth = total_ask_depth
+
         if abs(obi) > 0.5:
             anomalies.append({
                 "type": "HEAVY_IMBALANCE",

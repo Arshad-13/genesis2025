@@ -156,3 +156,119 @@ body,
   background: #334155;
   border-radius: 4px;
 }
+
+/* ======================================================
+   PRICE LADDER
+====================================================== */
+.ladder-container {
+  display: flex;
+  flex-direction: column;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+}
+
+.ladder-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 0;
+}
+
+.price-cell {
+  width: 80px;
+  text-align: right;
+  color: #9ca3af;
+  padding-right: 10px;
+}
+
+.vol-cell {
+  flex: 1;
+  position: relative;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.vol-bar {
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0.6;
+}
+
+.vol-bar.bid {
+  background-color: #22c55e; /* Green */
+}
+
+.vol-bar.ask {
+  background-color: #ef4444; /* Red */
+}
+
+.vol-text {
+  position: relative;
+  z-index: 1;
+  padding-left: 5px;
+  font-size: 0.75rem;
+  color: #fff;
+  line-height: 18px;
+}
+
+/* ======================================================
+   PRICE LADDER
+====================================================== */
+.ladder-container {
+  display: flex;
+  flex-direction: column;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+}
+
+.ladder-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 0;
+}
+
+.price-cell {
+  width: 80px;
+  text-align: right;
+  color: #9ca3af;
+  padding-right: 10px;
+}
+
+.vol-cell {
+  flex: 1;
+  position: relative;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.vol-bar {
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0.6;
+}
+
+.vol-bar.bid {
+  background-color: #22c55e; /* Green */
+}
+
+.vol-bar.ask {
+  background-color: #ef4444; /* Red */
+}
+
+.vol-text {
+  position: relative;
+  z-index: 1;
+  padding-left: 5px;
+  font-size: 0.75rem;
+  color: #fff;
+  line-height: 18px;
+}

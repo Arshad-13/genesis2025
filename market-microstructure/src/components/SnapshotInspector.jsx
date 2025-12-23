@@ -55,12 +55,6 @@ export default function SnapshotInspector({ snapshot }) {
           </span>
         </div>
         <div className="detail-row">
-          <span>V-PIN:</span>
-          <span style={{ color: snapshot.vpin > 0.4 ? '#ef4444' : '#94a3b8' }}>
-            {snapshot.vpin?.toFixed(4)}
-          </span>
-        </div>
-        <div className="detail-row">
           <span>Divergence:</span>
           <span className={snapshot.divergence > 0 ? 'text-green' : 'text-red'}>
             {snapshot.divergence?.toFixed(4)}
