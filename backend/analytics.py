@@ -62,6 +62,14 @@ class MarketSimulator:
                 # Reduce volume significantly to simulate the filter removing the "fake" part
                 bid_vol = int(bid_vol * 0.1)
                 ask_vol = int(ask_vol * 0.1)
+            
+            # Create liquidity gaps (simulate market maker withdrawal)
+            # Higher probability of gaps during shock periods
+            gap_probability = 0.08 if not is_shock else 0.20
+            if np.random.random() < gap_probability:
+                # Create a gap by reducing volume to very low levels
+                bid_vol = max(5, int(bid_vol * 0.05))  # Very thin liquidity
+                ask_vol = max(5, int(ask_vol * 0.05))
 
             bids.append([bid_px, bid_vol])
             asks.append([ask_px, ask_vol])
@@ -88,6 +96,9 @@ class AnalyticsEngine:
         
         # Feature G: Microprice Divergence
         self.tick_size = 0.01
+        
+        # Feature H: Liquidity Gaps Detection
+        self.gap_threshold = 50  # Minimum volume to not be considered a gap
 
     def process_snapshot(self, snapshot):
         bids = snapshot['bids']
@@ -209,4 +220,51 @@ class AnalyticsEngine:
             })
         
         snapshot['anomalies'] = anomalies
+        
+        # Feature H: Liquidity Gaps Detection
+        liquidity_gaps = self.detect_liquidity_gaps(bids, asks, mid_price)
+        snapshot['liquidity_gaps'] = liquidity_gaps
+        
         return snapshot
+    
+    def detect_liquidity_gaps(self, bids, asks, mid_price):
+        """
+        Detect price levels with zero or minimal liquidity (gaps).
+        Returns list of gaps with their risk scores.
+        """
+        gaps = []
+        
+        # Analyze bid side for thin liquidity
+        for i, (price, volume) in enumerate(bids):
+            if volume < self.gap_threshold:
+                distance_from_mid = abs(price - mid_price)
+                # Risk score: higher when gap is closer to mid and volume is lower
+                risk_score = (1 - (volume / self.gap_threshold)) * (1 / (1 + distance_from_mid * 10))
+                
+                gaps.append({
+                    'price': round(price, 2),
+                    'volume': volume,
+                    'side': 'bid',
+                    'risk_score': round(risk_score * 100, 1),
+                    'distance_from_mid': round(distance_from_mid, 4),
+                    'level': i + 1
+                })
+        
+        # Analyze ask side for thin liquidity
+        for i, (price, volume) in enumerate(asks):
+            if volume < self.gap_threshold:
+                distance_from_mid = abs(price - mid_price)
+                risk_score = (1 - (volume / self.gap_threshold)) * (1 / (1 + distance_from_mid * 10))
+                
+                gaps.append({
+                    'price': round(price, 2),
+                    'volume': volume,
+                    'side': 'ask',
+                    'risk_score': round(risk_score * 100, 1),
+                    'distance_from_mid': round(distance_from_mid, 4),
+                    'level': i + 1
+                })
+        
+        # Sort by risk score (highest first) and return top 5
+        gaps.sort(key=lambda x: x['risk_score'], reverse=True)
+        return gaps[:5]

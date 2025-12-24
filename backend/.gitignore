@@ -1,0 +1,6 @@
+__python__/
+
+*.pyc
+*.cpython
+
+../.vscode

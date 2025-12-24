@@ -103,10 +103,26 @@ async def get_latest_snapshot():
     if not data_buffer:
         return {}
     return data_buffer[-1]
-    """Returns the single latest snapshot for the inspector."""
+
+@app.get("/liquidity-gaps")
+async def get_liquidity_gaps():
+    """Returns liquidity gaps analysis for recent snapshots."""
     if not data_buffer:
-        return {}
-    return data_buffer[-1]
+        return []
+    
+    # Get gaps from recent snapshots
+    recent_snapshots = data_buffer[-20:]  # Last 20 snapshots
+    gaps_timeline = []
+    
+    for snapshot in recent_snapshots:
+        if 'liquidity_gaps' in snapshot and snapshot['liquidity_gaps']:
+            gaps_timeline.append({
+                'timestamp': snapshot['timestamp'],
+                'gaps': snapshot['liquidity_gaps'],
+                'mid_price': snapshot['mid_price']
+            })
+    
+    return gaps_timeline
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

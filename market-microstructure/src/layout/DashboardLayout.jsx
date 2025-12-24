@@ -5,6 +5,7 @@ import Heatmap from "../components/Heatmap";
 import FeaturePanel from "../components/FeaturePanel";
 import SnapshotInspector from "../components/SnapshotInspector";
 import PriceLadder from "../components/PriceLadder";
+import LiquidityGaps from "../components/LiquidityGaps";
 
 export default function DashboardLayout({ data, latestSnapshot }) {
   const [hoveredSnapshot, setHoveredSnapshot] = useState(null);
@@ -22,6 +23,7 @@ export default function DashboardLayout({ data, latestSnapshot }) {
         <div className="main">
           <PriceChart data={data} />
           <Heatmap data={data} onHover={setHoveredSnapshot} />
+          <LiquidityGaps data={data} onHover={setHoveredSnapshot} />
           <FeaturePanel 
             title="Order Book Imbalance" 
             data={data} 

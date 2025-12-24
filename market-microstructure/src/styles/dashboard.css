@@ -44,3 +44,38 @@ body {
   padding: 10px;
   border-radius: 4px;
 }
+/* Additional styles for better visual hierarchy */
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+  font-size: 12px;
+}
+
+.text-green {
+  color: #22c55e;
+}
+
+.text-red {
+  color: #ef4444;
+}
+
+.loading {
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.snapshot-details {
+  margin-top: 10px;
+}
+
+.critical {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.warning {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
