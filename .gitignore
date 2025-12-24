@@ -12,6 +12,9 @@ venv/
 pip-log.txt
 pip-delete-this-directory.txt
 
+pnpm-lock.yaml
+.vscode
+
 # Node
 node_modules/
 dist/
