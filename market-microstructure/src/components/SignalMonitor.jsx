@@ -3,7 +3,7 @@ import React from 'react';
 export default function SignalMonitor({ snapshot }) {
   if (!snapshot || !snapshot.anomalies || snapshot.anomalies.length === 0) {
     return (
-      <div className="panel" style={{ height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
         <span style={{ color: '#4b5563' }}>No Active Signals</span>
       </div>
     );
@@ -19,8 +19,8 @@ export default function SignalMonitor({ snapshot }) {
   };
 
   return (
-    <div className="panel" style={{ height: '150px', overflowY: 'auto' }}>
-      <h4 style={{ marginBottom: '10px', borderBottom: '1px solid #374151', paddingBottom: '5px' }}>
+    <div style={{ height: '150px', overflowY: 'auto', marginBottom: '16px' }}>
+      <h4 style={{ margin: '0 0 12px 0', fontSize: '0.875rem', fontWeight: 600, color: '#e5e7eb', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #374151', paddingBottom: '8px' }}>
         🚨 Market Signals
       </h4>
       <div className="signals-list">

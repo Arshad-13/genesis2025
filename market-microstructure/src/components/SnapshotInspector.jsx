@@ -1,8 +1,8 @@
 export default function SnapshotInspector({ snapshot }) {
   if (!snapshot) {
     return (
-      <div className="panel snapshot">
-        <h4>Snapshot Inspector</h4>
+      <div>
+        <h4 style={{ margin: '0 0 12px 0', fontSize: '0.875rem', fontWeight: 600, color: '#e5e7eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Snapshot Inspector</h4>
         <div className="loading">Waiting for data...</div>
       </div>
     );
@@ -12,9 +12,8 @@ export default function SnapshotInspector({ snapshot }) {
   const hasHighSeverity = anomalies.some(a => a.severity === 'critical' || a.severity === 'high');
 
   return (
-    <div className="panel snapshot">
-      <h4>Snapshot Inspector</h4>
-      
+    <div>
+      <h4 style={{ margin: '0 0 12px 0', fontSize: '0.875rem', fontWeight: 600, color: '#e5e7eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Snapshot Inspector</h4>
       {anomalies.length > 0 && (
         <div className={`alert ${hasHighSeverity ? 'critical' : 'warning'}`}>
           {anomalies.map((a, i) => (

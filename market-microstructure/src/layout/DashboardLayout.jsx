@@ -12,38 +12,62 @@ export default function DashboardLayout({ data, latestSnapshot }) {
   const activeSnapshot = hoveredSnapshot || latestSnapshot;
 
   return (
-  <div className="dashboard-shell">
-    <ControlsBar />
+    <div className="dashboard-shell">
+      <ControlsBar />
 
-    <div className="dashboard-grid">
-      {/* Left Column */}
-      <div className="left-column">
-        <div className="panel fixed price">
-          <CanvasPriceChart data={data} height={220} />
+      <div className="dashboard-grid">
+        {/* Left Column */}
+        <div className="left-column">
+          <div className="panel fixed price">
+            <CanvasPriceChart data={data} height={220} />
+          </div>
+
+          <div className="panel fixed heatmap">
+            <CanvasHeatmap
+              data={data}
+              height={220}
+              onHover={setHoveredSnapshot}
+            />
+          </div>
+
+          <div className="features-scroll">
+            <div className="panel">
+              <SignalMonitor snapshot={latestSnapshot} />
+            </div>
+
+            <div className="panel">
+              <FeaturePanel
+                title="Order Book Imbalance"
+                data={data}
+                dataKey="obi"
+                color="#38bdf8"
+                threshold={0.5}
+              />
+            </div>
+
+            <div className="panel">
+              <FeaturePanel
+                title="Spread"
+                data={data}
+                dataKey="spread"
+                color="#f472b6"
+                isSpread
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="panel fixed heatmap">
-          <CanvasHeatmap data={data} height={220} onHover={setHoveredSnapshot} />
-        </div>
+        {/* Right Column */}
+        <div className="right-column">
+          <div className="panel inspector-scroll">
+            <SnapshotInspector snapshot={activeSnapshot} />
+          </div>
 
-        <div className="panel features-scroll">
-          <SignalMonitor snapshot={latestSnapshot} />
-          <FeaturePanel title="Order Book Imbalance" data={data} dataKey="obi" color="#38bdf8" threshold={0.5} />
-          <FeaturePanel title="Spread" data={data} dataKey="spread" color="#f472b6" isSpread />
-        </div>
-      </div>
-
-      {/* Right Column */}
-      <div className="right-column">
-        <div className="panel inspector-scroll">
-          <SnapshotInspector snapshot={activeSnapshot} />
-        </div>
-
-        <div className="panel ladder-scroll">
-          <PriceLadder snapshot={activeSnapshot} />
+          <div className="panel ladder-scroll">
+            <PriceLadder snapshot={activeSnapshot} />
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
 }

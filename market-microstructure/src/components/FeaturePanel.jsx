@@ -41,8 +41,8 @@ export default function FeaturePanel({ title, data = [], dataKey, color, thresho
   }
 
   return (
-    <div className="panel">
-      <h4>{title}</h4>
+    <div style={{ marginBottom: '16px' }}>
+      <h4 style={{ margin: '0 0 12px 0', fontSize: '0.875rem', fontWeight: 600, color: '#e5e7eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{title}</h4>
       <Plot
         data={[
           {

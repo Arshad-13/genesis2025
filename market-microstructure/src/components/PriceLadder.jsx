@@ -3,8 +3,8 @@ import React from 'react';
 export default function PriceLadder({ snapshot }) {
   if (!snapshot || !snapshot.bids || !snapshot.asks) {
     return (
-      <div className="panel ladder">
-        <h4>Price Ladder</h4>
+      <div>
+        <h4 style={{ margin: '0 0 16px 0', fontSize: '0.875rem', fontWeight: 600, color: '#e5e7eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Price Ladder</h4>
         <div className="loading">Waiting for data...</div>
       </div>
     );
@@ -28,8 +28,8 @@ export default function PriceLadder({ snapshot }) {
   );
 
   return (
-    <div className="panel ladder">
-      <h4>Price Ladder</h4>
+    <div>
+      <h4 style={{ margin: '0 0 16px 0', fontSize: '0.875rem', fontWeight: 600, color: '#e5e7eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Price Ladder</h4>
       <div className="ladder-container">
         {/* Asks (Red) */}
         {asks.map((level, i) => (
@@ -46,7 +46,7 @@ export default function PriceLadder({ snapshot }) {
         ))}
         
         {/* Spread Indicator */}
-        <div className="spread-row" style={{ textAlign: 'center', padding: '5px', fontSize: '0.8rem', color: '#9ca3af', borderTop: '1px solid #374151', borderBottom: '1px solid #374151' }}>
+        <div className="spread-row" style={{ textAlign: 'center', padding: '8px 0', fontSize: '0.8rem', color: '#9ca3af', borderTop: '1px solid #374151', borderBottom: '1px solid #374151', margin: '4px 0' }}>
             Spread: {(asks[asks.length-1].price - bids[0].price).toFixed(2)}
         </div>
 

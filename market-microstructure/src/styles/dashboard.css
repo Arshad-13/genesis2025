@@ -18,7 +18,7 @@ body,
 ====================================================== */
 
 .dashboard-shell {
-  min-height: 100vh;              /* ✅ allow page scroll */
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   background: #020617;
@@ -33,35 +33,34 @@ body,
   flex: 1;
   display: grid;
   grid-template-columns: 3.2fr 1.3fr;
-  gap: 12px;
+  gap: 16px;
   padding: 12px;
-  align-items: start;             /* 🔑 prevents stretch bugs */
+  align-items: start;
 }
 
 /* ======================================================
-   LEFT COLUMN (NO SCROLL, FULLY VISIBLE)
+   LEFT COLUMN
 ====================================================== */
 
 .left-column {
   display: grid;
-  grid-template-rows: 240px 240px auto;
-  gap: 12px;
+  grid-template-rows: auto auto auto;
+  gap: 24px;
 }
 
 /* ======================================================
-   RIGHT COLUMN (SCROLL ALLOWED)
+   RIGHT COLUMN
 ====================================================== */
 
 .right-column {
   display: grid;
-  grid-template-rows: 1fr 1fr;
-  gap: 12px;
-  max-height: calc(100vh - 72px); /* below controls bar */
+  grid-template-rows: auto auto;
+  gap: 24px;
 }
 
 .inspector-scroll,
 .ladder-scroll {
-  overflow-y: auto;
+  overflow-y: visible;
 }
 
 /* ======================================================
@@ -72,7 +71,26 @@ body,
   background: #020617;
   border: 1px solid #1e293b;
   border-radius: 8px;
-  padding: 10px;
+  padding: 12px;
+}
+
+/* ======================================================
+   CHART SECTIONS (TITLE + PANEL)
+====================================================== */
+
+.chart-section {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.chart-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.5px;
+  padding-left: 2px;
 }
 
 /* ======================================================
@@ -80,7 +98,7 @@ body,
 ====================================================== */
 
 .features-scroll {
-  overflow: visible; /* ✅ show all features */
+  overflow: visible;
 }
 
 /* ======================================================
@@ -107,6 +125,17 @@ body,
 }
 
 /* ======================================================
+   FEATURES SECTION SPACING
+====================================================== */
+
+.features-scroll {
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;  /* Space between Signal Monitor, OBI, and Spread */
+}
+
+/* ======================================================
    BUTTONS
 ====================================================== */
 
@@ -120,6 +149,7 @@ body,
   cursor: pointer;
   background: #0f172a;
   color: #e5e7eb;
+  transition: filter 0.15s ease;
 }
 
 .btn.buy {
@@ -157,21 +187,27 @@ body,
   border-radius: 4px;
 }
 
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
 /* ======================================================
    PRICE LADDER
 ====================================================== */
+
 .ladder-container {
   display: flex;
   flex-direction: column;
   font-family: 'Courier New', monospace;
   font-size: 0.85rem;
+  gap: 1px;
 }
 
 .ladder-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 2px 0;
+  padding: 3px 0;
 }
 
 .price-cell {
@@ -179,13 +215,14 @@ body,
   text-align: right;
   color: #9ca3af;
   padding-right: 10px;
+  font-size: 0.8rem;
 }
 
 .vol-cell {
   flex: 1;
   position: relative;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.05);
+  height: 20px;
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -196,79 +233,22 @@ body,
   top: 0;
   left: 0;
   opacity: 0.6;
+  transition: opacity 0.2s ease;
 }
 
 .vol-bar.bid {
-  background-color: #22c55e; /* Green */
+  background-color: #22c55e;
 }
 
 .vol-bar.ask {
-  background-color: #ef4444; /* Red */
+  background-color: #ef4444;
 }
 
 .vol-text {
   position: relative;
   z-index: 1;
-  padding-left: 5px;
+  padding-left: 6px;
   font-size: 0.75rem;
-  color: #fff;
-  line-height: 18px;
-}
-
-/* ======================================================
-   PRICE LADDER
-====================================================== */
-.ladder-container {
-  display: flex;
-  flex-direction: column;
-  font-family: 'Courier New', monospace;
-  font-size: 0.85rem;
-}
-
-.ladder-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 2px 0;
-}
-
-.price-cell {
-  width: 80px;
-  text-align: right;
-  color: #9ca3af;
-  padding-right: 10px;
-}
-
-.vol-cell {
-  flex: 1;
-  position: relative;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.vol-bar {
-  height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  opacity: 0.6;
-}
-
-.vol-bar.bid {
-  background-color: #22c55e; /* Green */
-}
-
-.vol-bar.ask {
-  background-color: #ef4444; /* Red */
-}
-
-.vol-text {
-  position: relative;
-  z-index: 1;
-  padding-left: 5px;
-  font-size: 0.75rem;
-  color: #fff;
-  line-height: 18px;
+  color: #e5e7eb;
+  line-height: 20px;
 }
