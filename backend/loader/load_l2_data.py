@@ -3,7 +3,7 @@ from sqlalchemy import create_engine
 import os
 
 # Use relative path or absolute path based on workspace
-CSV_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "l2_clean.csv")
+CSV_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dataset", "l2_clean.csv")
 DB_URL = "postgresql://postgres:postgres@127.0.0.1:5433/orderbook"
 
 print(f"Reading CSV from {CSV_PATH}...")
