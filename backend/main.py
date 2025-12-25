@@ -122,6 +122,13 @@ REPLAY_BATCH_SIZE = 500
 replay_buffer = deque()
 
 # --------------------------------------------------
+# Analytics Worker (LATENCY FIX #2)
+# --------------------------------------------------
+raw_snapshot_queue = queue.Queue(maxsize=2000)
+processed_snapshot_queue = queue.Queue(maxsize=2000)
+
+
+# --------------------------------------------------
 # WebSocket Connection Manager
 # --------------------------------------------------
 class ConnectionManager:
@@ -198,6 +205,49 @@ async def broadcast_loop():
         except Exception as e:
             logger.error(f"Broadcast error: {e}")
             await asyncio.sleep(0.1)
+
+async def processed_broadcast_loop():
+    """Broadcast processed snapshots from analytics worker."""
+    while True:
+        try:
+            while not processed_snapshot_queue.empty():
+                processed, processing_time = processed_snapshot_queue.get_nowait()
+
+                data_buffer.append(processed)
+                if len(data_buffer) > MAX_BUFFER:
+                    data_buffer.pop(0)
+
+                await manager.broadcast(processed)
+
+                total_latency = processing_time  # DB + queue already removed
+                metrics.record_snapshot(total_latency, processing_time)
+
+            await asyncio.sleep(0.005)
+        except Exception as e:
+            logger.error(f"Processed broadcast error: {e}")
+            await asyncio.sleep(0.05)
+
+
+def analytics_worker():
+    """Runs heavy analytics off the event loop."""
+    logger.info("Analytics worker started")
+    while True:
+        try:
+            snapshot = raw_snapshot_queue.get()
+            if snapshot is None:
+                continue
+
+            processing_start = time.time()
+            processed = engine.process_snapshot(snapshot)
+            processing_time = (time.time() - processing_start) * 1000
+
+            processed = sanitize(processed)
+
+            processed_snapshot_queue.put((processed, processing_time))
+        except Exception as e:
+            metrics.record_error("analytics_worker_error")
+            logger.error(f"Analytics worker error: {e}")
+
 
 # --------------------------------------------------
 # CSV Replay Loop (FALLBACK 2)
@@ -353,23 +403,14 @@ async def replay_loop():
 
         start_time = time.time()
         
-        # Analytics processing
         snapshot = db_row_to_snapshot(row)
-        
-        processing_start = time.time()
-        processed = engine.process_snapshot(snapshot)
-        processing_time = (time.time() - processing_start) * 1000
 
-        processed = sanitize(processed)
+        # Send to analytics worker (non-blocking)
+        try:
+            raw_snapshot_queue.put_nowait(snapshot)
+        except queue.Full:
+            metrics.record_error("analytics_queue_full")
 
-        data_buffer.append(processed)
-        if len(data_buffer) > MAX_BUFFER:
-            data_buffer.pop(0)
-
-        await manager.broadcast(processed)
-        
-        total_latency = (time.time() - start_time) * 1000
-        metrics.record_snapshot(total_latency, processing_time)
         
         # Replay speed (250 ms base)
         await asyncio.sleep(0.25 / controller.speed)
@@ -379,9 +420,17 @@ async def replay_loop():
 # --------------------------------------------------
 @app.on_event("startup")
 async def startup():
-    controller.state = "PLAYING"   # auto-start
+    controller.state = "PLAYING"
+
+    # Start analytics worker
+    threading.Thread(target=analytics_worker, daemon=True).start()
+
+    # Start loops
     asyncio.create_task(replay_loop())
+    asyncio.create_task(processed_broadcast_loop())
+
     logger.info("Backend started")
+
 
 # --------------------------------------------------
 # WebSocket Endpoint
