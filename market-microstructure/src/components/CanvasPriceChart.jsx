@@ -4,13 +4,14 @@ export default function CanvasPriceChart({
   data,
   width = "100%",
   height = 250,
+  scale = 1,
 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [mousePos, setMousePos] = useState(null);
   const [dimensions, setDimensions] = useState({ w: 600, h: 250 });
 
-  // Constants for layout
+  // Constants for layout - reduced padding for full width
   const PADDING = { top: 20, right: 50, bottom: 20, left: 10 };
 
   // Helper to format price
@@ -89,10 +90,11 @@ export default function CanvasPriceChart({
       ctx.moveTo(PADDING.left, y);
       ctx.lineTo(w - PADDING.right, y);
 
-      // Y-Axis Labels
+      // Y-Axis Labels on right side
       const priceLabel = yMax - i * (yRange / 4);
       ctx.fillStyle = "#64748b";
       ctx.font = "10px sans-serif";
+      ctx.textAlign = "left";
       ctx.fillText(formatPrice(priceLabel), w - PADDING.right + 5, y + 3);
     }
     ctx.stroke();
@@ -203,9 +205,9 @@ export default function CanvasPriceChart({
 
   const handleMouseMove = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
-    // Fix: Ensure we get the position relative to the canvas element correctly
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    // Account for scale transform
+    const x = (e.clientX - rect.left) / scale;
+    const y = (e.clientY - rect.top) / scale;
     setMousePos({ x, y });
   };
 
@@ -214,13 +216,13 @@ export default function CanvasPriceChart({
   };
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', overflow: 'hidden' }}>
+    <div ref={containerRef} style={{ position: 'relative', overflow: 'hidden', width: '100%' }}>
       <h4 style={{ margin: '0 0 12px 0', fontSize: '0.875rem', fontWeight: 600, color: '#e5e7eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Price Action</h4>
       <canvas 
         ref={canvasRef} 
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        style={{ display: 'block', cursor: 'crosshair' }}
+        style={{ display: 'block', cursor: 'crosshair', width: '100%' }}
       />
     </div>
   );

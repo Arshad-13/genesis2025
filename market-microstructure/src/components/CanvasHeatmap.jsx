@@ -5,6 +5,7 @@ export default function CanvasHeatmap({
   width = "100%",
   height = 250,
   onHover,
+  scale = 1,
 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -12,14 +13,16 @@ export default function CanvasHeatmap({
   const [dimensions, setDimensions] = useState({ w: 600, h: 250 });
 
   // Layout constants
-  const PADDING = { left: 40, right: 10, top: 10, bottom: 10 };
+  const PADDING = { left: 10, right: 10, top: 10, bottom: 10 };
 
   // Handle Resize
   useEffect(() => {
     const handleResize = () => {
       if (containerRef.current) {
         const { clientWidth } = containerRef.current;
-        setDimensions({ w: clientWidth, h: height });
+        // Make canvas wider to compensate for scale, keep height unchanged
+        const adjustedWidth = clientWidth / (scale || 1);
+        setDimensions({ w: adjustedWidth, h: height });
       }
     };
 
@@ -27,7 +30,7 @@ export default function CanvasHeatmap({
     handleResize(); // Init
 
     return () => window.removeEventListener("resize", handleResize);
-  }, [height]);
+  }, [height, scale]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -120,20 +123,25 @@ export default function CanvasHeatmap({
     ctx.stroke();
 
     // --- Draw Y-Axis Labels ---
-    ctx.fillStyle = "#64748b";
+    ctx.fillStyle = "#e5e7eb";
     ctx.font = "10px sans-serif";
-    ctx.textAlign = "right";
+    ctx.textAlign = "left";
+    ctx.fillStyle = "rgba(15, 23, 42, 0.8)";
+    ctx.fillRect(PADDING.left, PADDING.top, 45, 12);
+    ctx.fillRect(PADDING.left, PADDING.top + CHART_HEIGHT / 2 - 6, 45, 12);
+    ctx.fillRect(PADDING.left, PADDING.top + CHART_HEIGHT - 12, 45, 12);
 
+    ctx.fillStyle = "#e5e7eb";
     // Top Label (Ask 10)
-    ctx.fillText("Ask 10", PADDING.left - 5, PADDING.top + 10);
+    ctx.fillText("Ask 10", PADDING.left + 3, PADDING.top + 10);
     // Mid Label (Spread)
     ctx.fillText(
       "Spread",
-      PADDING.left - 5,
+      PADDING.left + 3,
       PADDING.top + CHART_HEIGHT / 2 + 3
     );
     // Bottom Label (Bid 10)
-    ctx.fillText("Bid 10", PADDING.left - 5, PADDING.top + CHART_HEIGHT - 2);
+    ctx.fillText("Bid 10", PADDING.left + 3, PADDING.top + CHART_HEIGHT - 2);
 
     // --- Draw Hover Effect ---
     if (mousePos) {
@@ -165,8 +173,9 @@ export default function CanvasHeatmap({
 
   const handleMouseMove = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    // Account for scale transform
+    const x = (e.clientX - rect.left) / scale;
+    const y = (e.clientY - rect.top) / scale;
     setMousePos({ x, y });
   };
 
@@ -178,7 +187,7 @@ export default function CanvasHeatmap({
   return (
     <div
       ref={containerRef}
-      style={{ position: "relative", overflow: "hidden" }}
+      style={{ position: "relative", overflow: "hidden", width: '100%' }}
     >
       <h4
         style={{
@@ -196,7 +205,7 @@ export default function CanvasHeatmap({
         ref={canvasRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        style={{ display: "block", cursor: "crosshair" }}
+        style={{ display: "block", cursor: "crosshair", width: '100%' }}
       />
     </div>
   );
