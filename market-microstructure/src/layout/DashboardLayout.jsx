@@ -173,7 +173,7 @@ export default function DashboardLayout({
       >
         {/* Price Action */}
         <div style={{
-          height: '20%',
+          height: '145px',
           backgroundColor: '#1e293b',
           borderRadius: '8px',
           border: '1px solid #334155',
@@ -192,7 +192,7 @@ export default function DashboardLayout({
         {/* Market Depth */}
         <div
           style={{
-            height: "20%",
+            height: "145px",
             backgroundColor: "#1e293b",
             borderRadius: "8px",
             border: "1px solid #334155",
@@ -220,7 +220,7 @@ export default function DashboardLayout({
         {/* Active Signals */}
         <div
           style={{
-            height: "16%",
+            height: "116px",
             backgroundColor: "#1e293b",
             borderRadius: "8px",
             border: "1px solid #334155",
@@ -244,7 +244,7 @@ export default function DashboardLayout({
         {/* Features/Anomalies */}
         <div
           style={{
-            flex: 1,
+            height: "273px",
             backgroundColor: "#1e293b",
             borderRadius: "8px",
             border: "1px solid #334155",
@@ -393,7 +393,7 @@ export default function DashboardLayout({
         {/* Snapshot Inspector */}
         <div
           style={{
-            height: "26.5%",
+            height: "193px",
             backgroundColor: "#1e293b",
             borderRadius: "8px",
             border: "1px solid #334155",
@@ -417,7 +417,7 @@ export default function DashboardLayout({
         {/* Price Ladder */}
         <div
           style={{
-            flex: 1,
+            height: "450px",
             backgroundColor: "#1e293b",
             borderRadius: "8px",
             border: "1px solid #334155",
