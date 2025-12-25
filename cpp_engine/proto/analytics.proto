@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package analytics;
+
+// -------- Core Types --------
+
+message PriceLevel {
+  double price = 1;
+  double volume = 2;
+}
+
+message Snapshot {
+  string timestamp = 1;
+  repeated PriceLevel bids = 2;
+  repeated PriceLevel asks = 3;
+  double mid_price = 4;
+}
+
+// -------- Output --------
+
+message Anomaly {
+  string type = 1;
+  string severity = 2;
+  string message = 3;
+}
+
+message ProcessedSnapshot {
+  string timestamp = 1;
+  double mid_price = 2;
+  double spread = 3;
+  double ofi = 4;
+  double obi = 5;
+  repeated Anomaly anomalies = 6;
+}
+
+// -------- Service --------
+
+service AnalyticsService {
+  rpc ProcessSnapshot (Snapshot) returns (ProcessedSnapshot);
+}
