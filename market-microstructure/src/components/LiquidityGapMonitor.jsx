@@ -43,7 +43,7 @@ export default function LiquidityGapMonitor({ snapshot, data = [] }) {
         borderBottom: '1px solid #374151',
         paddingBottom: '8px'
       }}>
-        💧 Liquidity Gap Monitor
+        {/* 💧 Liquidity Gap Monitor */}
       </h4>
 
       {/* Current Status */}

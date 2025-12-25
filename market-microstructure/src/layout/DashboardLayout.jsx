@@ -31,10 +31,10 @@ export default function DashboardLayout({
   const features = [
     {
       id: "obi",
-      title: "Order Book Imbalance",
+      title: "ORDER BOOK IMBALANCE",
       component: (
         <FeaturePanel
-          title="Order Book Imbalance"
+          // title="Order Book Imbalance"
           data={data}
           dataKey="obi"
           color="#38bdf8"
@@ -53,10 +53,10 @@ export default function DashboardLayout({
     },
     {
       id: "spread",
-      title: "Spread",
+      title: "SPREAD",
       component: (
         <FeaturePanel
-          title="Spread"
+          // title="Spread"
           data={data}
           dataKey="spread"
           color="#f472b6"
@@ -75,7 +75,7 @@ export default function DashboardLayout({
     },
     {
       id: "liquidity",
-      title: "Liquidity Gap Monitor",
+      title: "LIQUIDITY GAP MONITOR",
       component: <LiquidityGapMonitor snapshot={latestSnapshot} data={data} />,
       modalComponent: (
         <div
@@ -89,7 +89,11 @@ export default function DashboardLayout({
           <div style={{ flex: 1, overflow: "hidden" }}>
             <LiquidityGapMonitor snapshot={latestSnapshot} data={data} />
           </div>
-          <div style={{ flex: 1, overflow: "hidden" }}>
+          <div style={{ 
+            flex: 1,
+            overflow: "hidden", 
+            transform: 'scale(0.9)',
+            transformOrigin: 'top left'}}>
             <LiquidityGapChart data={data} />
           </div>
         </div>
@@ -97,7 +101,7 @@ export default function DashboardLayout({
     },
     {
       id: "spoofing",
-      title: "Spoofing Detector",
+      title: "SPOOFING DETECTOR",
       component: <SpoofingDetector snapshot={latestSnapshot} data={data} />,
       modalComponent: (
         <div
@@ -111,7 +115,10 @@ export default function DashboardLayout({
           <div style={{ flex: 1, overflow: "hidden" }}>
             <SpoofingDetector snapshot={latestSnapshot} data={data} />
           </div>
-          <div style={{ flex: 1, overflow: "hidden" }}>
+          <div style={{ 
+            flex: 1, 
+            overflow: "hidden", 
+          }}>
             <SpoofingRiskChart data={data} />
           </div>
         </div>
@@ -166,7 +173,7 @@ export default function DashboardLayout({
       >
         {/* Price Action */}
         <div style={{
-          height: '18%',
+          height: '20%',
           backgroundColor: '#1e293b',
           borderRadius: '8px',
           border: '1px solid #334155',
@@ -174,18 +181,18 @@ export default function DashboardLayout({
           padding: '6px'
         }}>
           <div style={{ 
-            width: '142.86%',
-            transform: 'scale(0.7)',
+            width: '125%',
+            transform: 'scale(0.8)',
             transformOrigin: 'top left'
           }}>
-            <CanvasPriceChart data={data} height={150} scale={0.7} />
+            <CanvasPriceChart data={data} height={150} scale={0.8} />
           </div>
         </div>
 
         {/* Market Depth */}
         <div
           style={{
-            height: "18%",
+            height: "20%",
             backgroundColor: "#1e293b",
             borderRadius: "8px",
             border: "1px solid #334155",
@@ -196,16 +203,16 @@ export default function DashboardLayout({
           <div
             style={{
               height: "calc(100% - 12px)",
-              transform: "scale(0.7)",
+              transform: "scale(0.8)",
               transformOrigin: "top left",
-              width: "142.86%",
+              width: "125%",
             }}
           >
             <CanvasHeatmap
               data={data}
               height={150}
               onHover={setHoveredSnapshot}
-              scale={0.7}
+              scale={0.8}
             />
           </div>
         </div>
@@ -213,7 +220,7 @@ export default function DashboardLayout({
         {/* Active Signals */}
         <div
           style={{
-            height: "14%",
+            height: "16%",
             backgroundColor: "#1e293b",
             borderRadius: "8px",
             border: "1px solid #334155",
@@ -224,7 +231,7 @@ export default function DashboardLayout({
         >
           <div
             style={{
-              transform: "scale(0.7)",
+              transform: "scale(0.8)",
               transformOrigin: "top left",
               width: "111.11%",
               height: "111.11%",
@@ -344,9 +351,14 @@ export default function DashboardLayout({
               overflow: "hidden",
               padding: "10px",
               minHeight: 0,
+              display: "flex",
+              alignItems: "center",
+              // justifyContent: "center",
             }}
           >
-            {currentFeature.component}
+            <div style={{ width: '100%' }}>
+              {currentFeature.component}
+            </div>
           </div>
         </div>
       </div>

@@ -28,7 +28,7 @@ export default function SpoofingDetector({ snapshot, data = [] }) {
         borderBottom: '1px solid #374151',
         paddingBottom: '8px'
       }}>
-        🎭 Spoofing Detector
+        {/* 🎭 Spoofing Detector */}
       </h4>
 
       {/* Current Status */}
