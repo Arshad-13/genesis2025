@@ -16,6 +16,7 @@ include_directories(
 
 add_executable(analytics_server
     src/server.cpp
+    src/analytics_engine.cpp
     src/analytics.pb.cc
     src/analytics.grpc.pb.cc
 )

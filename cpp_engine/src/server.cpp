@@ -4,6 +4,7 @@
 
 #include <grpcpp/grpcpp.h>
 #include "analytics.grpc.pb.h"
+#include "analytics_engine.h"
 
 using grpc::Server;
 using grpc::ServerBuilder;
@@ -15,18 +16,16 @@ using analytics::Snapshot;
 using analytics::ProcessedSnapshot;
 
 class AnalyticsServiceImpl final : public AnalyticsService::Service {
+private:
+    AnalyticsEngine engine;
+
 public:
     Status ProcessSnapshot(ServerContext* context,
                            const Snapshot* request,
                            ProcessedSnapshot* response) override {
 
-        // Minimal echo logic (temporary)
-        response->set_timestamp(request->timestamp());
-        response->set_mid_price(request->mid_price());
-        response->set_spread(0.0);
-        response->set_ofi(0.0);
-        response->set_obi(0.0);
-
+        // Use real analytics engine
+        *response = engine.processSnapshot(*request);
         return Status::OK;
     }
 };
