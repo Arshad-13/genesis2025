@@ -18,6 +18,12 @@ import time
 import json
 from collections import defaultdict, deque
 
+from grpc_client.analytics_client import CppAnalyticsClient
+
+
+USE_CPP_ENGINE = False  # feature flag - C++ engine is stub, use Python
+
+
 def sanitize(obj):
     if isinstance(obj, dict):
         return {k: sanitize(v) for k, v in obj.items()}
@@ -52,12 +58,22 @@ class MetricsCollector:
         self.processing_times = deque(maxlen=1000)
         self.last_snapshot_time = None
         self.start_time = time.time()
+        self.cpp_latency = deque(maxlen=1000)
+        self.py_latency = deque(maxlen=1000)
+
         
     def record_snapshot(self, latency_ms: float, processing_time_ms: float):
         self.total_snapshots_processed += 1
         self.latency_samples.append(latency_ms)
         self.processing_times.append(processing_time_ms)
         self.last_snapshot_time = time.time()
+
+    def record_engine_latency(self, engine, latency_ms):
+        if engine == "cpp":
+            self.cpp_latency.append(latency_ms)
+        else:
+            self.py_latency.append(latency_ms)
+
     
     def record_error(self, error_type: str):
         self.total_errors += 1
@@ -107,6 +123,7 @@ app.add_middleware(
 # Core Components
 # --------------------------------------------------
 engine = AnalyticsEngine()
+cpp_client = CppAnalyticsClient()
 controller = ReplayController()
 simulator = MarketSimulator() # Fallback Simulator
 
@@ -231,6 +248,7 @@ async def processed_broadcast_loop():
 def analytics_worker():
     """Runs heavy analytics off the event loop."""
     logger.info("Analytics worker started")
+
     while True:
         try:
             snapshot = raw_snapshot_queue.get()
@@ -238,12 +256,28 @@ def analytics_worker():
                 continue
 
             processing_start = time.time()
-            processed = engine.process_snapshot(snapshot)
-            processing_time = (time.time() - processing_start) * 1000
+
+            if USE_CPP_ENGINE:
+                result = cpp_client.process_snapshot(snapshot)
+
+                processed = {
+                    "timestamp": snapshot["timestamp"],
+                    "mid_price": result["mid_price"],
+                    "spread": result["spread"],
+                    "ofi": result["ofi"],
+                    "obi": result["obi"],
+                    "anomalies": result["anomalies"],
+                }
+
+                processing_time = result["latency_ms"]
+
+            else:
+                processed = engine.process_snapshot(snapshot)
+                processing_time = (time.time() - processing_start) * 1000
 
             processed = sanitize(processed)
-
             processed_snapshot_queue.put((processed, processing_time))
+
         except Exception as e:
             metrics.record_error("analytics_worker_error")
             logger.error(f"Analytics worker error: {e}")
@@ -630,3 +664,15 @@ def metrics_dashboard():
     stats["replay_speed"] = controller.speed
     
     return stats
+
+@app.get("/benchmark/latency")
+def latency_benchmark():
+    def avg(x): return sum(x) / len(x) if x else 0
+
+    return {
+        "python_avg_ms": round(avg(metrics.py_latency), 3),
+        "cpp_avg_ms": round(avg(metrics.cpp_latency), 3),
+        "python_samples": len(metrics.py_latency),
+        "cpp_samples": len(metrics.cpp_latency),
+        "winner": "cpp" if avg(metrics.cpp_latency) < avg(metrics.py_latency) else "python"
+    }
