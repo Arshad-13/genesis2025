@@ -322,6 +322,12 @@ def analytics_worker():
                     used_engine = "cpp"
                     consecutive_cpp_failures = 0  # Reset failure counter
                     
+                    # Add Python-only advanced anomaly detection on top of C++ results
+                    advanced_anomalies = engine.detect_advanced_anomalies(snapshot)
+                    if advanced_anomalies:
+                        processed['anomalies'] = processed.get('anomalies', []) + advanced_anomalies
+                        used_engine = "cpp+python_advanced"
+                    
                 except grpc.RpcError as e:
                     consecutive_cpp_failures += 1
                     logger.warning(f"C++ engine RPC error ({consecutive_cpp_failures}/{MAX_CPP_FAILURES}): {e.code()}")
@@ -760,6 +766,136 @@ def get_alert_history(limit: int = 100):
 def get_alert_stats():
     """Get alert statistics and counts."""
     return engine.alert_manager.get_alert_stats()
+
+@app.get("/anomalies/quote-stuffing")
+def get_quote_stuffing_events():
+    """Get recent quote stuffing events (rapid order fire/cancel)."""
+    events = []
+    for snap in data_buffer:
+        if "anomalies" in snap:
+            for a in snap["anomalies"]:
+                if a.get("type") == "QUOTE_STUFFING":
+                    events.append({
+                        "timestamp": snap.get("timestamp"),
+                        "severity": a.get("severity"),
+                        "message": a.get("message"),
+                        "update_rate": a.get("update_rate"),
+                        "avg_rate": a.get("avg_rate"),
+                        "mid_price": snap.get("mid_price")
+                    })
+    return events
+
+@app.get("/anomalies/layering")
+def get_layering_events():
+    """Get recent layering/spoofing events (stacked fake orders)."""
+    events = []
+    for snap in data_buffer:
+        if "anomalies" in snap:
+            for a in snap["anomalies"]:
+                if a.get("type") == "LAYERING":
+                    events.append({
+                        "timestamp": snap.get("timestamp"),
+                        "severity": a.get("severity"),
+                        "message": a.get("message"),
+                        "side": a.get("side"),
+                        "score": a.get("score"),
+                        "large_order_count": a.get("large_order_count"),
+                        "mid_price": snap.get("mid_price")
+                    })
+    return events
+
+@app.get("/anomalies/momentum-ignition")
+def get_momentum_ignition_events():
+    """Get recent momentum ignition events (aggressive orders triggering algos)."""
+    events = []
+    for snap in data_buffer:
+        if "anomalies" in snap:
+            for a in snap["anomalies"]:
+                if a.get("type") == "MOMENTUM_IGNITION":
+                    events.append({
+                        "timestamp": snap.get("timestamp"),
+                        "severity": a.get("severity"),
+                        "message": a.get("message"),
+                        "price_change_pct": a.get("price_change_pct"),
+                        "volume": a.get("volume"),
+                        "direction": a.get("direction"),
+                        "mid_price": snap.get("mid_price")
+                    })
+    return events
+
+@app.get("/anomalies/wash-trading")
+def get_wash_trading_events():
+    """Get recent wash trading events (self-trading patterns)."""
+    events = []
+    for snap in data_buffer:
+        if "anomalies" in snap:
+            for a in snap["anomalies"]:
+                if a.get("type") == "WASH_TRADING":
+                    events.append({
+                        "timestamp": snap.get("timestamp"),
+                        "severity": a.get("severity"),
+                        "message": a.get("message"),
+                        "avg_volume": a.get("avg_volume"),
+                        "volume_variance": a.get("volume_variance"),
+                        "pattern_count": a.get("pattern_count"),
+                        "mid_price": snap.get("mid_price")
+                    })
+    return events
+
+@app.get("/anomalies/iceberg-orders")
+def get_iceberg_order_events():
+    """Get recent iceberg order detections (hidden large orders)."""
+    events = []
+    for snap in data_buffer:
+        if "anomalies" in snap:
+            for a in snap["anomalies"]:
+                if a.get("type") == "ICEBERG_ORDER":
+                    events.append({
+                        "timestamp": snap.get("timestamp"),
+                        "severity": a.get("severity"),
+                        "message": a.get("message"),
+                        "price": a.get("price"),
+                        "side": a.get("side"),
+                        "fill_count": a.get("fill_count"),
+                        "total_volume": a.get("total_volume"),
+                        "avg_fill_size": a.get("avg_fill_size"),
+                        "mid_price": snap.get("mid_price")
+                    })
+    return events
+
+@app.get("/anomalies/summary")
+def get_anomalies_summary():
+    """Get summary statistics of all advanced anomaly types."""
+    summary = {
+        "quote_stuffing": 0,
+        "layering": 0,
+        "momentum_ignition": 0,
+        "wash_trading": 0,
+        "iceberg_orders": 0,
+        "spoofing": 0,
+        "liquidity_gaps": 0
+    }
+    
+    for snap in data_buffer:
+        if "anomalies" in snap:
+            for a in snap["anomalies"]:
+                anomaly_type = a.get("type", "").lower().replace("_", "")
+                if "quotestuffing" in anomaly_type:
+                    summary["quote_stuffing"] += 1
+                elif "layering" in anomaly_type:
+                    summary["layering"] += 1
+                elif "momentumignition" in anomaly_type:
+                    summary["momentum_ignition"] += 1
+                elif "washtrading" in anomaly_type:
+                    summary["wash_trading"] += 1
+                elif "icebergorder" in anomaly_type:
+                    summary["iceberg_orders"] += 1
+                elif "spoofing" in anomaly_type:
+                    summary["spoofing"] += 1
+                elif "liquiditygap" in anomaly_type:
+                    summary["liquidity_gaps"] += 1
+    
+    return summary
 
 @app.get("/snapshot/latest")
 def get_latest_snapshot():

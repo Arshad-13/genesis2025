@@ -379,6 +379,214 @@ class AnalyticsEngine:
         self.avg_spread_sq = 0.0025
         self.avg_l1_vol = 10.0
         self.alpha = 0.05 # Smoothing factor
+        
+        # Advanced Anomaly Detection - Fix #10
+        # Quote Stuffing Detection
+        self.order_event_timestamps = deque(maxlen=100)  # Track order events timing
+        self.quote_update_rate = deque(maxlen=20)  # Updates per second
+        
+        # Layering Detection
+        self.layering_history = deque(maxlen=50)  # Track layering patterns
+        self.prev_depth_profile = {'bids': [], 'asks': []}
+        
+        # Momentum Ignition Detection
+        self.aggressive_order_history = deque(maxlen=30)
+        self.price_momentum = deque(maxlen=20)
+        
+        # Wash Trading Detection
+        self.trade_pattern_buffer = deque(maxlen=100)  # Track trade patterns
+        self.volume_clustering = deque(maxlen=50)
+        
+        # Iceberg Order Detection
+        self.iceberg_candidates = defaultdict(lambda: {'fills': 0, 'volume': 0, 'first_seen': None})
+        self.repeated_fills_history = deque(maxlen=100)
+    
+    def detect_advanced_anomalies(self, snapshot: dict) -> list:
+        """
+        Standalone method to detect advanced manipulation patterns.
+        Can be called after C++ engine processing to add Python-only detection.
+        Returns list of anomaly dictionaries.
+        """
+        anomalies = []
+        
+        bids = snapshot.get('bids', [])
+        asks = snapshot.get('asks', [])
+        mid_price = snapshot.get('mid_price', 100.0)
+        
+        if not bids or not asks:
+            return anomalies
+        
+        current_l1_vol = (bids[0][1] + asks[0][1]) / 2
+        current_time = datetime.now()
+        
+        # 1. Quote Stuffing Detection
+        self.order_event_timestamps.append(current_time)
+        one_sec_ago = current_time - timedelta(seconds=1)
+        recent_updates = [t for t in self.order_event_timestamps if t > one_sec_ago]
+        update_rate = len(recent_updates)
+        self.quote_update_rate.append(update_rate)
+        
+        avg_update_rate = np.mean(list(self.quote_update_rate)) if len(self.quote_update_rate) > 0 else 0
+        
+        if update_rate > 20 and update_rate > avg_update_rate * 3:
+            anomalies.append({
+                "type": "QUOTE_STUFFING",
+                "severity": "critical",
+                "message": f"Quote Stuffing: {update_rate} updates/sec (avg: {avg_update_rate:.1f})",
+                "update_rate": update_rate,
+                "avg_rate": avg_update_rate
+            })
+        
+        # 2. Layering Detection
+        bid_volumes = [b[1] for b in bids[:5]]
+        ask_volumes = [a[1] for a in asks[:5]]
+        
+        bid_large_count = sum(1 for v in bid_volumes if v > (2 * self.avg_l1_vol))
+        ask_large_count = sum(1 for v in ask_volumes if v > (2 * self.avg_l1_vol))
+        
+        if bid_large_count >= 3 and bid_large_count > ask_large_count + 2:
+            layering_score = min(bid_large_count * 20, 100)
+            anomalies.append({
+                "type": "LAYERING",
+                "severity": "critical" if layering_score > 70 else "high",
+                "message": f"Layering: {bid_large_count} large orders on BID side",
+                "side": "BID",
+                "score": layering_score,
+                "large_order_count": bid_large_count
+            })
+        elif ask_large_count >= 3 and ask_large_count > bid_large_count + 2:
+            layering_score = min(ask_large_count * 20, 100)
+            anomalies.append({
+                "type": "LAYERING",
+                "severity": "critical" if layering_score > 70 else "high",
+                "message": f"Layering: {ask_large_count} large orders on ASK side",
+                "side": "ASK",
+                "score": layering_score,
+                "large_order_count": ask_large_count
+            })
+        
+        # 3. Momentum Ignition Detection
+        price_change = 0
+        if len(self.price_momentum) > 0:
+            prev_mid = self.price_momentum[-1]
+            price_change = (mid_price - prev_mid) / prev_mid if prev_mid > 0 else 0
+        
+        self.price_momentum.append(mid_price)
+        
+        if abs(price_change) > 0.002 and current_l1_vol > (2.5 * self.avg_l1_vol):
+            if len(self.price_momentum) >= 3:
+                recent_changes = [
+                    (self.price_momentum[i] - self.price_momentum[i-1]) / self.price_momentum[i-1]
+                    for i in range(-3, 0)
+                ]
+                same_direction = all(c > 0 for c in recent_changes) or all(c < 0 for c in recent_changes)
+                
+                if same_direction:
+                    anomalies.append({
+                        "type": "MOMENTUM_IGNITION",
+                        "severity": "critical",
+                        "message": f"Momentum Ignition: Rapid {'+' if price_change > 0 else ''}{price_change*100:.2f}% move",
+                        "price_change_pct": price_change * 100,
+                        "volume": current_l1_vol,
+                        "direction": "UP" if price_change > 0 else "DOWN"
+                    })
+        
+        # 4. Wash Trading Detection
+        for i in range(min(3, len(bids), len(asks))):
+            bid_px, bid_vol = bids[i]
+            ask_px, ask_vol = asks[i]
+            
+            if abs(bid_vol - ask_vol) / max(bid_vol, ask_vol) < 0.05 and bid_vol > self.avg_l1_vol:
+                self.volume_clustering.append({
+                    "bid_price": bid_px,
+                    "ask_price": ask_px,
+                    "volume": (bid_vol + ask_vol) / 2,
+                    "level": i
+                })
+        
+        if len(self.volume_clustering) >= 5:
+            recent_vols = [v['volume'] for v in list(self.volume_clustering)[-5:]]
+            vol_std = np.std(recent_vols)
+            vol_mean = np.mean(recent_vols)
+            
+            if vol_std / vol_mean < 0.1 and vol_mean > self.avg_l1_vol * 1.5:
+                anomalies.append({
+                    "type": "WASH_TRADING",
+                    "severity": "high",
+                    "message": f"Wash Trading: Repeated similar volumes ({vol_mean:.0f} ± {vol_std:.0f})",
+                    "avg_volume": vol_mean,
+                    "volume_variance": vol_std,
+                    "pattern_count": len(recent_vols)
+                })
+        
+        # 5. Iceberg Order Detection
+        for i in range(min(3, len(bids))):
+            price_key = f"BID_{bids[i][0]:.2f}"
+            volume = bids[i][1]
+            
+            if price_key in self.iceberg_candidates:
+                candidate = self.iceberg_candidates[price_key]
+                candidate['fills'] += 1
+                candidate['volume'] += volume
+                
+                if candidate['fills'] >= 8:
+                    avg_fill_size = candidate['volume'] / candidate['fills']
+                    if 0.8 * avg_fill_size <= volume <= 1.2 * avg_fill_size:
+                        anomalies.append({
+                            "type": "ICEBERG_ORDER",
+                            "severity": "medium",
+                            "message": f"Iceberg Order: {candidate['fills']} fills at {bids[i][0]:.2f} (BID side)",
+                            "price": bids[i][0],
+                            "side": "BID",
+                            "fill_count": candidate['fills'],
+                            "total_volume": candidate['volume'],
+                            "avg_fill_size": avg_fill_size
+                        })
+                        del self.iceberg_candidates[price_key]
+            else:
+                self.iceberg_candidates[price_key] = {
+                    'fills': 1,
+                    'volume': volume,
+                    'first_seen': current_time
+                }
+        
+        for i in range(min(3, len(asks))):
+            price_key = f"ASK_{asks[i][0]:.2f}"
+            volume = asks[i][1]
+            
+            if price_key in self.iceberg_candidates:
+                candidate = self.iceberg_candidates[price_key]
+                candidate['fills'] += 1
+                candidate['volume'] += volume
+                
+                if candidate['fills'] >= 8:
+                    avg_fill_size = candidate['volume'] / candidate['fills']
+                    if 0.8 * avg_fill_size <= volume <= 1.2 * avg_fill_size:
+                        anomalies.append({
+                            "type": "ICEBERG_ORDER",
+                            "severity": "medium",
+                            "message": f"Iceberg Order: {candidate['fills']} fills at {asks[i][0]:.2f} (ASK side)",
+                            "price": asks[i][0],
+                            "side": "ASK",
+                            "fill_count": candidate['fills'],
+                            "total_volume": candidate['volume'],
+                            "avg_fill_size": avg_fill_size
+                        })
+                        del self.iceberg_candidates[price_key]
+            else:
+                self.iceberg_candidates[price_key] = {
+                    'fills': 1,
+                    'volume': volume,
+                    'first_seen': current_time
+                }
+        
+        # Cleanup old iceberg candidates
+        five_min_ago = current_time - timedelta(minutes=5)
+        old_keys = [k for k, v in self.iceberg_candidates.items() if v['first_seen'] and v['first_seen'] < five_min_ago]
+        for key in old_keys:
+            del self.iceberg_candidates[key]
+        
+        return anomalies
     
     def _train_kmeans_background(self, feature_data):
         """Train K-Means in background thread to avoid blocking."""
@@ -716,11 +924,229 @@ class AnalyticsEngine:
                 "spoofing_risk": spoofing_risk
             })
 
+        # --- Advanced Anomaly Detection (Fix #10) ---
+        
+        # 1. Quote Stuffing Detection
+        # Rapid fire of orders (>20 updates/sec) to slow down competitors
+        current_time = datetime.now()
+        self.order_event_timestamps.append(current_time)
+        
+        # Calculate update rate over last 1 second
+        one_sec_ago = current_time - timedelta(seconds=1)
+        recent_updates = [t for t in self.order_event_timestamps if t > one_sec_ago]
+        update_rate = len(recent_updates)
+        self.quote_update_rate.append(update_rate)
+        
+        avg_update_rate = np.mean(list(self.quote_update_rate)) if len(self.quote_update_rate) > 0 else 0
+        
+        if update_rate > 20 and update_rate > avg_update_rate * 3:
+            anomalies.append({
+                "type": "QUOTE_STUFFING",
+                "severity": "critical",
+                "message": f"Quote Stuffing: {update_rate} updates/sec (avg: {avg_update_rate:.1f})",
+                "update_rate": update_rate,
+                "avg_rate": avg_update_rate
+            })
+        
+        # 2. Layering Detection
+        # Multiple large orders stacked at different levels on one side
+        layering_score = 0
+        layering_side = None
+        
+        # Check for bid layering (multiple large orders on bid side)
+        bid_volumes = [b[1] for b in bids[:5]]
+        ask_volumes = [a[1] for a in asks[:5]]
+        
+        # Count large orders (>2x avg) on each side
+        bid_large_count = sum(1 for v in bid_volumes if v > (2 * self.avg_l1_vol))
+        ask_large_count = sum(1 for v in ask_volumes if v > (2 * self.avg_l1_vol))
+        
+        # Layering if 3+ large orders on one side with imbalance
+        if bid_large_count >= 3 and bid_large_count > ask_large_count + 2:
+            layering_score = min(bid_large_count * 20, 100)
+            layering_side = "BID"
+            self.layering_history.append({"side": "BID", "count": bid_large_count})
+        elif ask_large_count >= 3 and ask_large_count > bid_large_count + 2:
+            layering_score = min(ask_large_count * 20, 100)
+            layering_side = "ASK"
+            self.layering_history.append({"side": "ASK", "count": ask_large_count})
+        
+        if layering_score > 50:
+            anomalies.append({
+                "type": "LAYERING",
+                "severity": "critical" if layering_score > 70 else "high",
+                "message": f"Layering: {bid_large_count if layering_side == 'BID' else ask_large_count} large orders on {layering_side} side",
+                "side": layering_side,
+                "score": layering_score,
+                "large_order_count": bid_large_count if layering_side == "BID" else ask_large_count
+            })
+        
+        # 3. Momentum Ignition Detection
+        # Aggressive orders + rapid price movement to trigger algos
+        price_change = 0
+        if len(self.price_momentum) > 0:
+            prev_mid = self.price_momentum[-1]
+            price_change = (mid_price - prev_mid) / prev_mid if prev_mid > 0 else 0
+        
+        self.price_momentum.append(mid_price)
+        
+        # Check for rapid price move (>0.2% in one tick) with heavy volume
+        if abs(price_change) > 0.002 and current_l1_vol > (2.5 * self.avg_l1_vol):
+            # Check if price continued moving in same direction (momentum)
+            if len(self.price_momentum) >= 3:
+                recent_changes = [
+                    (self.price_momentum[i] - self.price_momentum[i-1]) / self.price_momentum[i-1]
+                    for i in range(-3, 0)
+                ]
+                same_direction = all(c > 0 for c in recent_changes) or all(c < 0 for c in recent_changes)
+                
+                if same_direction:
+                    self.aggressive_order_history.append({
+                        "price_change": price_change,
+                        "volume": current_l1_vol,
+                        "direction": "UP" if price_change > 0 else "DOWN"
+                    })
+                    
+                    if len(self.aggressive_order_history) >= 2:
+                        anomalies.append({
+                            "type": "MOMENTUM_IGNITION",
+                            "severity": "critical",
+                            "message": f"Momentum Ignition: Rapid {'+' if price_change > 0 else ''}{price_change*100:.2f}% move with {current_l1_vol:.0f} volume",
+                            "price_change_pct": price_change * 100,
+                            "volume": current_l1_vol,
+                            "direction": "UP" if price_change > 0 else "DOWN"
+                        })
+        
+        # 4. Wash Trading Detection
+        # Self-trading patterns (buy and sell at similar prices with similar volumes)
+        # Track volume patterns at each price level
+        for i in range(min(3, len(bids), len(asks))):
+            bid_px, bid_vol = bids[i]
+            ask_px, ask_vol = asks[i]
+            
+            # Check if bid/ask volumes are suspiciously similar (within 5%)
+            if abs(bid_vol - ask_vol) / max(bid_vol, ask_vol) < 0.05 and bid_vol > self.avg_l1_vol:
+                self.volume_clustering.append({
+                    "bid_price": bid_px,
+                    "ask_price": ask_px,
+                    "volume": (bid_vol + ask_vol) / 2,
+                    "level": i
+                })
+        
+        # Detect repeated similar volumes (potential wash trading)
+        if len(self.volume_clustering) >= 5:
+            recent_vols = [v['volume'] for v in list(self.volume_clustering)[-5:]]
+            vol_std = np.std(recent_vols)
+            vol_mean = np.mean(recent_vols)
+            
+            # Low variance in volumes suggests coordinated trading
+            if vol_std / vol_mean < 0.1 and vol_mean > self.avg_l1_vol * 1.5:
+                anomalies.append({
+                    "type": "WASH_TRADING",
+                    "severity": "high",
+                    "message": f"Wash Trading: Repeated similar volumes ({vol_mean:.0f} ± {vol_std:.0f})",
+                    "avg_volume": vol_mean,
+                    "volume_variance": vol_std,
+                    "pattern_count": len(recent_vols)
+                })
+        
+        # 5. Iceberg Order Detection
+        # Hidden large orders: repeated fills at same price with consistent volume
+        for i in range(min(3, len(bids))):
+            price_key = f"BID_{bids[i][0]:.2f}"
+            volume = bids[i][1]
+            
+            # Track repeated occurrences at same price level
+            if price_key in self.iceberg_candidates:
+                candidate = self.iceberg_candidates[price_key]
+                candidate['fills'] += 1
+                candidate['volume'] += volume
+                
+                # If we see 5+ fills at same price with consistent volume, flag as iceberg
+                if candidate['fills'] >= 5:
+                    avg_fill_size = candidate['volume'] / candidate['fills']
+                    
+                    # Check if fill sizes are consistent (low variance)
+                    if 0.8 * avg_fill_size <= volume <= 1.2 * avg_fill_size:
+                        self.repeated_fills_history.append({
+                            "price": bids[i][0],
+                            "side": "BID",
+                            "fills": candidate['fills'],
+                            "total_volume": candidate['volume']
+                        })
+                        
+                        if candidate['fills'] >= 8:  # Strong signal
+                            anomalies.append({
+                                "type": "ICEBERG_ORDER",
+                                "severity": "medium",
+                                "message": f"Iceberg Order: {candidate['fills']} fills at {bids[i][0]:.2f} (BID side)",
+                                "price": bids[i][0],
+                                "side": "BID",
+                                "fill_count": candidate['fills'],
+                                "total_volume": candidate['volume'],
+                                "avg_fill_size": avg_fill_size
+                            })
+                            # Reset after detection
+                            del self.iceberg_candidates[price_key]
+            else:
+                self.iceberg_candidates[price_key] = {
+                    'fills': 1,
+                    'volume': volume,
+                    'first_seen': current_time
+                }
+        
+        # Same for asks
+        for i in range(min(3, len(asks))):
+            price_key = f"ASK_{asks[i][0]:.2f}"
+            volume = asks[i][1]
+            
+            if price_key in self.iceberg_candidates:
+                candidate = self.iceberg_candidates[price_key]
+                candidate['fills'] += 1
+                candidate['volume'] += volume
+                
+                if candidate['fills'] >= 5:
+                    avg_fill_size = candidate['volume'] / candidate['fills']
+                    
+                    if 0.8 * avg_fill_size <= volume <= 1.2 * avg_fill_size:
+                        self.repeated_fills_history.append({
+                            "price": asks[i][0],
+                            "side": "ASK",
+                            "fills": candidate['fills'],
+                            "total_volume": candidate['volume']
+                        })
+                        
+                        if candidate['fills'] >= 8:
+                            anomalies.append({
+                                "type": "ICEBERG_ORDER",
+                                "severity": "medium",
+                                "message": f"Iceberg Order: {candidate['fills']} fills at {asks[i][0]:.2f} (ASK side)",
+                                "price": asks[i][0],
+                                "side": "ASK",
+                                "fill_count": candidate['fills'],
+                                "total_volume": candidate['volume'],
+                                "avg_fill_size": avg_fill_size
+                            })
+                            del self.iceberg_candidates[price_key]
+            else:
+                self.iceberg_candidates[price_key] = {
+                    'fills': 1,
+                    'volume': volume,
+                    'first_seen': current_time
+                }
+        
+        # Cleanup old iceberg candidates (older than 5 minutes)
+        five_min_ago = current_time - timedelta(minutes=5)
+        old_keys = [k for k, v in self.iceberg_candidates.items() if v['first_seen'] and v['first_seen'] < five_min_ago]
+        for key in old_keys:
+            del self.iceberg_candidates[key]
+
         # Update State
         self.prev_bids = bids
         self.prev_asks = asks
         self.prev_total_bid_depth = total_bid_depth
         self.prev_total_ask_depth = total_ask_depth
+        self.prev_depth_profile = {'bids': bids[:10], 'asks': asks[:10]}
 
         if abs(obi) > 0.5:
             anomalies.append({
