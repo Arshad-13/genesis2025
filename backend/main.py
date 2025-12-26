@@ -8,7 +8,7 @@ import pandas as pd
 
 from analytics import AnalyticsEngine, db_row_to_snapshot, MarketSimulator
 from replay import ReplayController
-from db import get_connection, return_connection, close_all_connections
+from db import get_connection, return_connection, close_all_connections, get_pool_stats
 
 from datetime import datetime
 from decimal import Decimal
@@ -819,8 +819,40 @@ def metrics_dashboard():
     stats["buffer_size"] = len(data_buffer)
     stats["controller_state"] = controller.state
     stats["replay_speed"] = controller.speed
+    stats["db_pool"] = get_pool_stats()
     
     return stats
+
+@app.get("/db/pool")
+def database_pool_stats():
+    """Get detailed database connection pool statistics."""
+    return get_pool_stats()
+
+@app.get("/db/health")
+def database_health():
+    """Check database connection pool health."""
+    pool_stats = get_pool_stats()
+    
+    is_healthy = True
+    issues = []
+    
+    if pool_stats["status"] != "active":
+        is_healthy = False
+        issues.append("Pool not initialized")
+    elif pool_stats["failed_acquisitions"] > 10:
+        is_healthy = False
+        issues.append(f"High failure rate: {pool_stats['failed_acquisitions']} failed acquisitions")
+    elif pool_stats["utilization_percent"] > 90:
+        issues.append(f"High utilization: {pool_stats['utilization_percent']}%")
+    
+    if pool_stats["status"] == "active" and pool_stats.get("avg_acquisition_time_ms", 0) > 50:
+        issues.append(f"Slow acquisitions: {pool_stats['avg_acquisition_time_ms']}ms avg")
+    
+    return {
+        "status": "healthy" if is_healthy else "degraded",
+        "issues": issues,
+        "pool_stats": pool_stats
+    }
 
 @app.get("/benchmark/latency")
 def latency_benchmark():
