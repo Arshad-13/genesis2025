@@ -157,6 +157,29 @@ export default function CanvasPriceChart({
     ctx.stroke();
     ctx.setLineDash([]);
 
+    // --- Draw Trade Markers ---
+    data.forEach((d, i) => {
+      if (d.trade_volume > 0) {
+        const x = getX(i);
+        const y = getY(d.last_trade_price || d.mid_price);
+        // Scale radius by volume
+        const radius = Math.min(Math.max(Math.log10(d.trade_volume || 10), 2), 6); 
+        
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, 2 * Math.PI);
+        
+        let color = '#fbbf24'; // Yellow default
+        if (d.trade_side === 'buy') color = '#4ade80';
+        else if (d.trade_side === 'sell') color = '#f87171';
+        
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    });
+
     // --- Draw Crosshair & Tooltip ---
     if (mousePos) {
       const { x } = mousePos;

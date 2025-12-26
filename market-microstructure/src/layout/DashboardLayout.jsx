@@ -11,6 +11,9 @@ import SpoofingDetector from "../components/SpoofingDetector";
 import LiquidityGapChart from "../components/LiquidityGapChart";
 import SpoofingRiskChart from "../components/SpoofingRiskChart";
 import Sidebar from "../components/Sidebar";
+import TradeFeed from "../components/TradeFeed";
+import VPINChart from "../components/VPINChart";
+import AdvancedAnomalyFeed from "../components/AdvancedAnomalyFeed";
 
 export default function DashboardLayout({
   data,
@@ -132,6 +135,24 @@ export default function DashboardLayout({
           </div>
         </div>
       ),
+    },
+    {
+      id: "trades",
+      title: "TRADE FEED",
+      component: <TradeFeed data={data} />,
+      modalComponent: <TradeFeed data={data} />,
+    },
+    {
+      id: "vpin",
+      title: "V-PIN MONITOR",
+      component: <VPINChart data={data} />,
+      modalComponent: <VPINChart data={data} />,
+    },
+    {
+      id: "anomalies",
+      title: "ADVANCED ANOMALIES",
+      component: <AdvancedAnomalyFeed data={data} />,
+      modalComponent: <AdvancedAnomalyFeed data={data} />,
     },
   ];
 

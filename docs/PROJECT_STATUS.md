@@ -98,6 +98,19 @@ Genesis 2025 is a high-frequency market simulator designed to model, analyze, an
     *   **Code Coverage:** Achieved 76% overall coverage (analytics: 83%, main: 46%, db: 45%) with HTML reports via `pytest-cov`.
     *   **CI/CD Ready:** All tests passing (46 passed, 2 skipped) with <5 seconds runtime, ready for GitHub Actions integration.
 
+### Phase 7: Trade Data & Advanced Visualization (Priority #14 & #15)
+**Goal:** Integrate trade execution data and enhance visualization capabilities.
+1.  **Trade Data Integration:**
+    *   Implemented **Lee-Ready Algorithm** for trade classification (Buy/Sell side).
+    *   Added **Effective & Realized Spread** calculations.
+    *   Enabled **V-PIN** (Volume-Synchronized Probability of Informed Trading) calculation.
+    *   Added trade-level anomaly detection (Unusual Size, Rapid Trading).
+2.  **Frontend Enhancements:**
+    *   **Trade Feed:** Real-time list of classified trades with effective spread.
+    *   **V-PIN Monitor:** Visual gauge for informed trading probability.
+    *   **Advanced Anomaly Feed:** Dedicated view for Quote Stuffing, Layering, etc.
+    *   **Chart Overlays:** Added trade markers (Buy/Sell) to the main price chart.
+
 ---
 
 ## � Current Production Readiness: 85%
@@ -238,18 +251,17 @@ pytest tests/test_analytics.py -v
 
 ### Current Limitations
 1. **Single Asset:** System processes one symbol at a time (multi-asset architecture designed but deferred)
-2. **L2 Data Only:** No trade execution data limits V-PIN and adverse selection analysis
-3. **No Authentication:** Open endpoints - requires JWT/API key implementation before production
-4. **Replay Only:** Live market data ingestion not yet implemented
+2. **No Authentication:** Open endpoints - requires JWT/API key implementation before production
+3. **Replay Only:** Live market data ingestion not yet implemented
 
 ### Planned Enhancements (Phase 7-8)
-1. **Trade Data Integration (High Priority)**
-   - Implement Lee-Ready algorithm for trade classification
-   - Calculate effective/realized spreads
-   - Enable V-PIN (Volume-Synchronized Probability of Informed Trading)
+1. **Trade Data Integration (Completed)**
+   - ✅ Implement Lee-Ready algorithm for trade classification
+   - ✅ Calculate effective/realized spreads
+   - ✅ Enable V-PIN (Volume-Synchronized Probability of Informed Trading)
 
-2. **Advanced Pattern Detection**
-   - Quote stuffing detection (high-frequency quote monitoring)
+2. **Advanced Pattern Detection (In Progress)**
+   - ✅ Quote stuffing detection (high-frequency quote monitoring)
    - Kyle's Lambda (price impact coefficient via regression)
    - Hawkes processes for order clustering
    - LSTM models for sequential pattern recognition
@@ -259,7 +271,7 @@ pytest tests/test_analytics.py -v
    - Cross-asset correlation monitoring
    - Portfolio-level surveillance
 
-4. **Authentication & Security**
+4. **Authentication & Security (Priority #12)**
    - JWT token authentication for WebSocket
    - API key management for REST endpoints
    - Role-based access control (RBAC)
