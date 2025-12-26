@@ -5,6 +5,8 @@ numpy
 pydantic
 websockets
 scikit-learn
+grpcio
+protobuf
 sqlalchemy 
 psycopg2-binary
 pytest

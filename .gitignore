@@ -21,3 +21,6 @@ dist/
 .env
 .DS_Store
 coverage/
+
+# Dataset
+l2_clean.csv
