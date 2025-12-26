@@ -21,7 +21,8 @@ async def get_connection_pool() -> asyncpg.Pool:
                     password="postgres",
                     min_size=1,
                     max_size=5,
-                    command_timeout=60
+                    command_timeout=60,
+                    timeout=10  # Connection acquisition timeout
                 )
     
     return _connection_pool
@@ -37,8 +38,17 @@ async def return_connection(conn):
     await pool.release(conn)
 
 async def close_all_connections():
-    """Close all connections in the pool."""
+    """Close all connections in the pool with timeout."""
     global _connection_pool
     if _connection_pool is not None:
-        await _connection_pool.close()
-        _connection_pool = None
+        try:
+            # Force close with shorter timeout to prevent hanging
+            await asyncio.wait_for(_connection_pool.close(), timeout=2.0)
+        except asyncio.TimeoutError:
+            # Terminate connections forcefully if close times out
+            _connection_pool.terminate()
+        except Exception as e:
+            # Force terminate on any error
+            _connection_pool.terminate()
+        finally:
+            _connection_pool = None

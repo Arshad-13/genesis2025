@@ -47,6 +47,8 @@ class CppAnalyticsClient:
             "gap_count": resp.gap_count,
             "gap_severity_score": resp.gap_severity_score,
             "spoofing_risk": resp.spoofing_risk,
+            "bids": snapshot.get("bids", []),  # Pass through original L2 data
+            "asks": snapshot.get("asks", []),  # Pass through original L2 data
             "anomalies": [
                 {
                     "type": a.type,

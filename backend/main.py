@@ -19,9 +19,13 @@ import json
 from collections import defaultdict, deque
 
 from grpc_client.analytics_client import CppAnalyticsClient
+import grpc
 
 
-USE_CPP_ENGINE = False  # feature flag - C++ engine is stub, use Python
+USE_CPP_ENGINE = os.getenv("USE_CPP_ENGINE", "true").lower() == "true"  # Auto-enable C++ engine
+CPP_ENGINE_HOST = os.getenv("CPP_ENGINE_HOST", "localhost")
+CPP_ENGINE_PORT = int(os.getenv("CPP_ENGINE_PORT", "50051"))
+engine_mode = "unknown"  # Track which engine is active: "cpp", "python", or "unavailable"
 
 
 def sanitize(obj):
@@ -89,6 +93,10 @@ class MetricsCollector:
         p95_latency = sorted(self.latency_samples)[int(len(self.latency_samples) * 0.95)] if len(self.latency_samples) > 20 else 0
         p99_latency = sorted(self.latency_samples)[int(len(self.latency_samples) * 0.99)] if len(self.latency_samples) > 100 else 0
         
+        # Engine-specific latency stats
+        cpp_avg = sum(self.cpp_latency) / len(self.cpp_latency) if self.cpp_latency else 0
+        py_avg = sum(self.py_latency) / len(self.py_latency) if self.py_latency else 0
+        
         return {
             "uptime_seconds": round(uptime, 1),
             "total_snapshots_processed": self.total_snapshots_processed,
@@ -101,7 +109,13 @@ class MetricsCollector:
             "avg_processing_time_ms": round(avg_processing, 2),
             "error_breakdown": dict(self.error_counts),
             "last_snapshot_ago_seconds": round(time.time() - self.last_snapshot_time, 1) if self.last_snapshot_time else None,
-            "mode": MODE
+            "mode": MODE,
+            "engine": engine_mode,
+            "cpp_avg_latency_ms": round(cpp_avg, 3),
+            "python_avg_latency_ms": round(py_avg, 3),
+            "cpp_samples": len(self.cpp_latency),
+            "python_samples": len(self.py_latency),
+            "performance_improvement": f"{(py_avg / cpp_avg):.1f}x" if cpp_avg > 0 and py_avg > 0 else "N/A"
         }
 
 metrics = MetricsCollector()
@@ -123,9 +137,46 @@ app.add_middleware(
 # Core Components
 # --------------------------------------------------
 engine = AnalyticsEngine()
-cpp_client = CppAnalyticsClient()
+cpp_client = None  # Lazy initialization
 controller = ReplayController()
 simulator = MarketSimulator() # Fallback Simulator
+
+
+def initialize_cpp_engine():
+    """Initialize C++ engine with connection test and fallback."""
+    global cpp_client, engine_mode
+    
+    if not USE_CPP_ENGINE:
+        logger.info("C++ engine disabled via config, using Python engine")
+        engine_mode = "python"
+        return False
+    
+    try:
+        cpp_client = CppAnalyticsClient(host=CPP_ENGINE_HOST, port=CPP_ENGINE_PORT, timeout_ms=100)
+        
+        # Test connection with dummy snapshot
+        test_snapshot = {
+            "timestamp": "2024-01-01T00:00:00",
+            "bids": [[100.0, 10.0], [99.9, 20.0]],
+            "asks": [[100.1, 15.0], [100.2, 25.0]],
+            "mid_price": 100.05
+        }
+        result = cpp_client.process_snapshot(test_snapshot)
+        
+        logger.info(f"✅ C++ engine connected at {CPP_ENGINE_HOST}:{CPP_ENGINE_PORT} (latency: {result.get('latency_ms', 0):.2f}ms)")
+        engine_mode = "cpp"
+        return True
+        
+    except grpc.RpcError as e:
+        logger.warning(f"⚠️  C++ engine unavailable ({e.code()}), falling back to Python engine")
+        engine_mode = "python"
+        cpp_client = None
+        return False
+    except Exception as e:
+        logger.warning(f"⚠️  C++ engine initialization failed: {e}, falling back to Python engine")
+        engine_mode = "python"
+        cpp_client = None
+        return False
 
 MAX_BUFFER = 100
 data_buffer: List[dict] = []
@@ -247,7 +298,11 @@ async def processed_broadcast_loop():
 
 def analytics_worker():
     """Runs heavy analytics off the event loop."""
-    logger.info("Analytics worker started")
+    global engine_mode, cpp_client
+    logger.info(f"Analytics worker started (engine: {engine_mode})")
+    
+    consecutive_cpp_failures = 0
+    MAX_CPP_FAILURES = 5
 
     while True:
         try:
@@ -256,27 +311,46 @@ def analytics_worker():
                 continue
 
             processing_start = time.time()
+            used_engine = "python"  # Default
 
-            if USE_CPP_ENGINE:
-                result = cpp_client.process_snapshot(snapshot)
-
-                processed = {
-                    "timestamp": snapshot["timestamp"],
-                    "mid_price": result["mid_price"],
-                    "spread": result["spread"],
-                    "ofi": result["ofi"],
-                    "obi": result["obi"],
-                    "anomalies": result["anomalies"],
-                }
-
-                processing_time = result["latency_ms"]
-
+            # Try C++ engine first if available
+            if engine_mode == "cpp" and cpp_client is not None:
+                try:
+                    result = cpp_client.process_snapshot(snapshot)
+                    processed = result  # C++ client returns full result
+                    processing_time = result.get("latency_ms", 0)
+                    used_engine = "cpp"
+                    consecutive_cpp_failures = 0  # Reset failure counter
+                    
+                except grpc.RpcError as e:
+                    consecutive_cpp_failures += 1
+                    logger.warning(f"C++ engine RPC error ({consecutive_cpp_failures}/{MAX_CPP_FAILURES}): {e.code()}")
+                    
+                    if consecutive_cpp_failures >= MAX_CPP_FAILURES:
+                        logger.error(f"C++ engine failed {MAX_CPP_FAILURES} times, switching to Python permanently")
+                        engine_mode = "python"
+                        cpp_client = None
+                    
+                    # Fallback to Python for this snapshot
+                    processed = engine.process_snapshot(snapshot)
+                    processing_time = (time.time() - processing_start) * 1000
+                    used_engine = "python_fallback"
+                    
+                except Exception as e:
+                    logger.error(f"C++ engine unexpected error: {e}")
+                    processed = engine.process_snapshot(snapshot)
+                    processing_time = (time.time() - processing_start) * 1000
+                    used_engine = "python_fallback"
             else:
+                # Use Python engine
                 processed = engine.process_snapshot(snapshot)
                 processing_time = (time.time() - processing_start) * 1000
+                used_engine = "python"
 
             processed = sanitize(processed)
+            processed["engine"] = used_engine  # Track which engine processed this
             processed_snapshot_queue.put((processed, processing_time))
+            metrics.record_engine_latency(used_engine.replace("_fallback", ""), processing_time)
 
         except Exception as e:
             metrics.record_error("analytics_worker_error")
@@ -392,6 +466,12 @@ async def replay_loop():
         
     except Exception as e:
         logger.warning(f"DB Connection failed: {e}")
+        
+        # Release connection if acquired
+        if conn:
+            await return_connection(conn)
+            conn = None
+        
         logger.info("Checking for CSV dataset...")
         
         csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "l2_clean.csv")
@@ -432,6 +512,9 @@ async def replay_loop():
                         if consecutive_errors >= max_consecutive_errors:
                             logger.error(f"Circuit breaker: {consecutive_errors} consecutive DB errors")
                             MODE = "SIMULATION"
+                            if conn:
+                                await return_connection(conn)
+                                conn = None
                             threading.Thread(target=simulation_loop, daemon=True).start()
                             asyncio.create_task(broadcast_loop())
                             break
@@ -489,6 +572,9 @@ async def replay_loop():
 @app.on_event("startup")
 async def startup():
     controller.state = "PLAYING"
+    
+    # Initialize C++ engine with fallback
+    initialize_cpp_engine()
 
     # Start analytics worker
     threading.Thread(target=analytics_worker, daemon=True).start()
@@ -504,8 +590,13 @@ async def startup():
 async def shutdown():
     """Gracefully close database connections on shutdown."""
     logger.info("Shutting down, closing database connections...")
-    await close_all_connections()
-    logger.info("Database connections closed")
+    try:
+        await asyncio.wait_for(close_all_connections(), timeout=3.0)
+        logger.info("Database connections closed successfully")
+    except asyncio.TimeoutError:
+        logger.warning("Database connection close timed out after 3s")
+    except Exception as e:
+        logger.error(f"Error during shutdown: {e}")
 
 
 # --------------------------------------------------
@@ -733,6 +824,7 @@ def metrics_dashboard():
 
 @app.get("/benchmark/latency")
 def latency_benchmark():
+    """Compare Python vs C++ engine performance."""
     def avg(x): return sum(x) / len(x) if x else 0
 
     return {
@@ -741,4 +833,99 @@ def latency_benchmark():
         "python_samples": len(metrics.py_latency),
         "cpp_samples": len(metrics.cpp_latency),
         "winner": "cpp" if avg(metrics.cpp_latency) < avg(metrics.py_latency) else "python"
+    }
+
+@app.get("/engine/status")
+def engine_status():
+    """Get current analytics engine status and configuration."""
+    return {
+        "active_engine": engine_mode,
+        "cpp_enabled": USE_CPP_ENGINE,
+        "cpp_host": CPP_ENGINE_HOST,
+        "cpp_port": CPP_ENGINE_PORT,
+        "cpp_available": cpp_client is not None,
+        "fallback_available": True  # Python engine always available
+    }
+
+@app.post("/engine/switch/{target_engine}")
+def switch_engine(target_engine: str):
+    """Manually switch between C++ and Python engines."""
+    global engine_mode, cpp_client
+    
+    if target_engine not in ["cpp", "python"]:
+        return {"status": "error", "message": "Invalid engine. Choose 'cpp' or 'python'"}
+    
+    if target_engine == "cpp":
+        if not USE_CPP_ENGINE:
+            return {"status": "error", "message": "C++ engine disabled in configuration"}
+        
+        # Try to reinitialize C++ engine
+        success = initialize_cpp_engine()
+        if success:
+            return {"status": "success", "message": "Switched to C++ engine", "engine": engine_mode}
+        else:
+            return {"status": "error", "message": "C++ engine unavailable, using Python", "engine": engine_mode}
+    
+    elif target_engine == "python":
+        engine_mode = "python"
+        logger.info("Manually switched to Python engine")
+        return {"status": "success", "message": "Switched to Python engine", "engine": engine_mode}
+
+@app.post("/engine/benchmark")
+async def run_benchmark():
+    """Run comprehensive benchmark comparing both engines."""
+    if engine_mode != "cpp" or cpp_client is None:
+        return {"status": "error", "message": "C++ engine not available for benchmarking"}
+    
+    test_snapshot = {
+        "timestamp": "2024-01-01T00:00:00",
+        "bids": [[100.0 - i*0.01, 100 + i*10] for i in range(10)],
+        "asks": [[100.0 + i*0.01, 100 + i*10] for i in range(10)],
+        "mid_price": 100.0
+    }
+    
+    # Warmup
+    for _ in range(10):
+        engine.process_snapshot(test_snapshot)
+        cpp_client.process_snapshot(test_snapshot)
+    
+    # Benchmark Python
+    py_times = []
+    for _ in range(100):
+        start = time.time()
+        engine.process_snapshot(test_snapshot)
+        py_times.append((time.time() - start) * 1000)
+    
+    # Benchmark C++
+    cpp_times = []
+    for _ in range(100):
+        try:
+            result = cpp_client.process_snapshot(test_snapshot)
+            cpp_times.append(result.get("latency_ms", 0))
+        except Exception as e:
+            return {"status": "error", "message": f"C++ benchmark failed: {e}"}
+    
+    py_avg = sum(py_times) / len(py_times)
+    cpp_avg = sum(cpp_times) / len(cpp_times)
+    
+    return {
+        "status": "success",
+        "python": {
+            "avg_ms": round(py_avg, 3),
+            "min_ms": round(min(py_times), 3),
+            "max_ms": round(max(py_times), 3),
+            "p50_ms": round(sorted(py_times)[50], 3),
+            "p95_ms": round(sorted(py_times)[95], 3),
+            "p99_ms": round(sorted(py_times)[99], 3)
+        },
+        "cpp": {
+            "avg_ms": round(cpp_avg, 3),
+            "min_ms": round(min(cpp_times), 3),
+            "max_ms": round(max(cpp_times), 3),
+            "p50_ms": round(sorted(cpp_times)[50], 3),
+            "p95_ms": round(sorted(cpp_times)[95], 3),
+            "p99_ms": round(sorted(cpp_times)[99], 3)
+        },
+        "speedup": round(py_avg / cpp_avg, 2) if cpp_avg > 0 else 0,
+        "winner": "cpp" if cpp_avg < py_avg else "python"
     }

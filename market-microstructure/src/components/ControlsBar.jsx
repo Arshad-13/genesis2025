@@ -68,7 +68,6 @@ export default function ControlsBar({
         alignItems: 'center',
         gap: '8px',
         padding: '8px',
-        alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#1e293b',
         borderRadius: '8px',

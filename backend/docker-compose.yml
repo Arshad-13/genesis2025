@@ -13,5 +13,14 @@ services:
     volumes:
       - tsdata:/var/lib/postgresql/data
 
+  cpp-analytics:
+    build:
+      context: ../cpp_engine
+      dockerfile: Dockerfile
+    container_name: cpp-analytics
+    ports:
+      - "50051:50051"
+    restart: unless-stopped
+
 volumes:
   tsdata:
