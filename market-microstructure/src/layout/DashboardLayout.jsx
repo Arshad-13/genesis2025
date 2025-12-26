@@ -23,6 +23,7 @@ export default function DashboardLayout({
   onGoBack, 
   replayState = "STOPPED",
   currentSpeed = 1,
+  showToast
 }) {
   const [hoveredSnapshot, setHoveredSnapshot] = useState(null);
   const [currentFeatureIndex, setCurrentFeatureIndex] = useState(0);
@@ -432,6 +433,8 @@ export default function DashboardLayout({
               isPlaying={replayState === "PLAYING"}
               isPaused={replayState === "PAUSED"}
               currentSpeed={currentSpeed}
+              currentTimestamp={latestSnapshot?.timestamp}
+              showToast={showToast}
             />
           </div>
 

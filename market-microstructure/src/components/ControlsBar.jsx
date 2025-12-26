@@ -9,7 +9,9 @@ export default function ControlsBar({
   onGoBack,
   isPlaying = false,
   isPaused = false,
-  currentSpeed = 1
+  currentSpeed = 1,
+  currentTimestamp = null,
+  showToast
 }) {
   const [speed, setSpeed] = useState(currentSpeed);
   const [speedUpValue, setSpeedUpValue] = useState(2);
@@ -17,25 +19,52 @@ export default function ControlsBar({
   const [showModal, setShowModal] = useState(false);
   const [tempSpeedUp, setTempSpeedUp] = useState(2);
   const [tempGoBack, setTempGoBack] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handlePlayPause = () => {
-    if (isPlaying) {
-      if (onPause) onPause();
-    } else if (isPaused) {
-      if (onResume) onResume();
-    } else {
-      if (onPlay) onPlay();
+  const handlePlayPause = async () => {
+    setIsLoading(true);
+    try {
+      if (isPlaying) {
+        if (onPause) await onPause();
+        if (showToast) showToast('Replay paused', 'info');
+      } else if (isPaused) {
+        if (onResume) await onResume();
+        if (showToast) showToast('Replay resumed', 'success');
+      } else {
+        if (onPlay) await onPlay();
+        if (showToast) showToast('Replay started', 'success');
+      }
+    } catch (error) {
+      if (showToast) showToast('Control action failed', 'error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleSpeedToggle = () => {
+  const handleSpeedToggle = async () => {
     const newSpeed = speed === 1 ? speedUpValue : 1;
-    setSpeed(newSpeed);
-    if (onSpeed) onSpeed(newSpeed);
+    setIsLoading(true);
+    try {
+      setSpeed(newSpeed);
+      if (onSpeed) await onSpeed(newSpeed);
+      if (showToast) showToast(`Speed set to ${newSpeed}x`, 'info');
+    } catch (error) {
+      if (showToast) showToast('Speed change failed', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleGoBack = () => {
-    if (onGoBack) onGoBack(goBackSeconds);
+  const handleGoBack = async () => {
+    setIsLoading(true);
+    try {
+      if (onGoBack) await onGoBack(goBackSeconds);
+      if (showToast) showToast(`Rewound ${goBackSeconds}s`, 'success');
+    } catch (error) {
+      if (showToast) showToast('Rewind failed', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleApplySettings = () => {
@@ -61,6 +90,12 @@ export default function ControlsBar({
     boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
   };
 
+  const formatTimestamp = (ts) => {
+    if (!ts) return 'No data';
+    const date = new Date(ts);
+    return date.toLocaleTimeString('en-US', { hour12: false });
+  };
+
   return (
     <>
       <div style={{
@@ -71,8 +106,24 @@ export default function ControlsBar({
         justifyContent: 'center',
         backgroundColor: '#1e293b',
         borderRadius: '8px',
-        border: '1px solid #334155'
+        border: '1px solid #334155',
+        opacity: isLoading ? 0.6 : 1,
+        pointerEvents: isLoading ? 'none' : 'auto'
       }}>
+        {/* Current Timestamp Display */}
+        {currentTimestamp && (
+          <div style={{
+            padding: '6px 12px',
+            backgroundColor: '#334155',
+            borderRadius: '6px',
+            fontSize: '12px',
+            color: '#94a3b8',
+            fontFamily: 'monospace',
+            marginRight: '8px'
+          }}>
+            ⏱️ {formatTimestamp(currentTimestamp)}
+          </div>
+        )}
         {/* Play/Pause Button */}
         <button 
           onClick={handlePlayPause}

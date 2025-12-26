@@ -81,7 +81,7 @@ export default function CanvasPriceChart({
     const getY = (price) =>
       PADDING.top + CHART_HEIGHT - ((price - yMin) / yRange) * CHART_HEIGHT;
 
-    // --- Draw Grid ---
+    // --- Draw Grid with Axis Labels ---
     ctx.strokeStyle = "#1e293b";
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -90,7 +90,7 @@ export default function CanvasPriceChart({
       ctx.moveTo(PADDING.left, y);
       ctx.lineTo(w - PADDING.right, y);
 
-      // Y-Axis Labels on right side
+      // Y-Axis Price Labels on right side
       const priceLabel = yMax - i * (yRange / 4);
       ctx.fillStyle = "#64748b";
       ctx.font = "10px sans-serif";
@@ -98,6 +98,19 @@ export default function CanvasPriceChart({
       ctx.fillText(formatPrice(priceLabel), w - PADDING.right + 5, y + 3);
     }
     ctx.stroke();
+
+    // X-Axis Time Labels
+    ctx.fillStyle = "#64748b";
+    ctx.font = "9px sans-serif";
+    ctx.textAlign = "center";
+    const timeLabels = [0, Math.floor(data.length / 2), data.length - 1];
+    timeLabels.forEach(idx => {
+      if (idx >= 0 && idx < data.length) {
+        const x = getX(idx);
+        const time = formatTime(data[idx].timestamp);
+        ctx.fillText(time, x, h - 5);
+      }
+    });
 
     // --- Draw Area Gradient ---
     const gradient = ctx.createLinearGradient(
