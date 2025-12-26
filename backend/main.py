@@ -1097,3 +1097,124 @@ async def run_benchmark():
         "speedup": round(py_avg / cpp_avg, 2) if cpp_avg > 0 else 0,
         "winner": "cpp" if cpp_avg < py_avg else "python"
     }
+# Priority #14: Trade Data Integration API Endpoints
+@app.get("/trades/classification")
+def get_trade_classification():
+    """Get recent trade classifications (buy/sell side)."""
+    trades = []
+    for snap in data_buffer[-100:]:  # Last 100 snapshots
+        if snap.get("trade_classified"):
+            trades.append({
+                "timestamp": snap.get("timestamp"),
+                "price": snap.get("last_trade_price"),
+                "volume": snap.get("trade_volume"),
+                "side": snap.get("trade_side"),
+                "mid_price": snap.get("mid_price"),
+                "effective_spread": snap.get("effective_spread")
+            })
+    return {"trades": trades, "count": len(trades)}
+
+@app.get("/trades/spreads")
+def get_trade_spreads():
+    """Get effective and realized spreads over time."""
+    spreads = []
+    for snap in data_buffer[-100:]:
+        if snap.get("trade_classified"):
+            spreads.append({
+                "timestamp": snap.get("timestamp"),
+                "effective_spread": snap.get("effective_spread", 0),
+                "realized_spread": snap.get("realized_spread", 0),
+                "trade_side": snap.get("trade_side"),
+                "mid_price": snap.get("mid_price")
+            })
+    
+    # Calculate statistics
+    if spreads:
+        effective = [s["effective_spread"] for s in spreads]
+        realized = [s["realized_spread"] for s in spreads]
+        
+        stats = {
+            "effective_spread": {
+                "mean": round(np.mean(effective), 4),
+                "std": round(np.std(effective), 4),
+                "min": round(min(effective), 4),
+                "max": round(max(effective), 4)
+            },
+            "realized_spread": {
+                "mean": round(np.mean(realized), 4),
+                "std": round(np.std(realized), 4),
+                "min": round(min(realized), 4),
+                "max": round(max(realized), 4)
+            }
+        }
+    else:
+        stats = {
+            "effective_spread": {"mean": 0, "std": 0, "min": 0, "max": 0},
+            "realized_spread": {"mean": 0, "std": 0, "min": 0, "max": 0}
+        }
+    
+    return {
+        "spreads": spreads,
+        "count": len(spreads),
+        "statistics": stats
+    }
+
+@app.get("/trades/vpin")
+def get_vpin():
+    """Get V-PIN (Volume-Synchronized Probability of Informed Trading) history."""
+    vpin_data = []
+    for snap in data_buffer[-100:]:
+        if "vpin" in snap and snap["vpin"] > 0:
+            vpin_data.append({
+                "timestamp": snap.get("timestamp"),
+                "vpin": snap["vpin"],
+                "mid_price": snap.get("mid_price"),
+                "obi": snap.get("obi", 0)
+            })
+    
+    # Calculate statistics
+    if vpin_data:
+        vpins = [v["vpin"] for v in vpin_data]
+        stats = {
+            "mean": round(np.mean(vpins), 4),
+            "std": round(np.std(vpins), 4),
+            "min": round(min(vpins), 4),
+            "max": round(max(vpins), 4),
+            "current": round(vpins[-1], 4) if vpins else 0
+        }
+    else:
+        stats = {"mean": 0, "std": 0, "min": 0, "max": 0, "current": 0}
+    
+    return {
+        "vpin_history": vpin_data,
+        "count": len(vpin_data),
+        "statistics": stats,
+        "interpretation": {
+            "low": "V-PIN < 0.3: Low informed trading probability",
+            "medium": "0.3 ≤ V-PIN < 0.6: Moderate informed trading",
+            "high": "V-PIN ≥ 0.6: High informed trading probability (potential adverse selection)"
+        }
+    }
+
+@app.get("/trades/anomalies")
+def get_trade_anomalies():
+    """Get trade-level anomalies (unusual sizes, rapid trading, etc.)."""
+    trade_anomalies = []
+    for snap in data_buffer[-100:]:
+        if "anomalies" in snap:
+            for a in snap["anomalies"]:
+                if a.get("type") in ["UNUSUAL_TRADE_SIZE", "RAPID_TRADING"]:
+                    trade_anomalies.append({
+                        "timestamp": snap.get("timestamp"),
+                        "type": a.get("type"),
+                        "severity": a.get("severity"),
+                        "message": a.get("message"),
+                        "details": {
+                            k: v for k, v in a.items() 
+                            if k not in ["type", "severity", "message", "timestamp"]
+                        }
+                    })
+    return {
+        "anomalies": trade_anomalies,
+        "count": len(trade_anomalies)
+    }

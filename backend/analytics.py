@@ -8,6 +8,148 @@ from typing import Dict, List, Tuple, Optional
 import threading
 import time
 
+class TradeClassifier:
+    """
+    Implements Lee-Ready algorithm for trade classification.
+    Classifies trades as buyer-initiated or seller-initiated.
+    """
+    
+    def __init__(self, tick_size: float = 0.01):
+        self.tick_size = tick_size
+        self.trade_history = deque(maxlen=1000)  # Track recent trades
+        self.last_mid_price = None
+        
+    def classify_trade(self, trade_price: float, mid_price: float, 
+                       best_bid: float, best_ask: float) -> str:
+        """
+        Classify trade using Lee-Ready algorithm (tick test).
+        
+        Returns:
+            'buy' if buyer-initiated (aggressive buyer)
+            'sell' if seller-initiated (aggressive seller)
+            'unknown' if cannot determine
+        """
+        # Tick test: Compare trade price to mid-price
+        if trade_price > mid_price:
+            return 'buy'  # Above mid-price -> buyer-initiated
+        elif trade_price < mid_price:
+            return 'sell'  # Below mid-price -> seller-initiated
+        else:
+            # Trade at mid-price - use quote rule
+            spread = best_ask - best_bid
+            if spread < self.tick_size:
+                return 'unknown'
+                
+            # Distance from best bid/ask
+            dist_from_bid = trade_price - best_bid
+            dist_from_ask = best_ask - trade_price
+            
+            if dist_from_bid < dist_from_ask:
+                return 'sell'  # Closer to bid -> seller-initiated
+            elif dist_from_ask < dist_from_bid:
+                return 'buy'  # Closer to ask -> buyer-initiated
+            else:
+                return 'unknown'
+    
+    def calculate_effective_spread(self, trade_price: float, mid_price: float, 
+                                   side: str) -> float:
+        """
+        Calculate effective spread.
+        Effective Spread = 2 * |trade_price - mid_price|
+        
+        For buyer-initiated: 2 * (trade_price - mid_price)
+        For seller-initiated: 2 * (mid_price - trade_price)
+        """
+        if side == 'buy':
+            return 2 * (trade_price - mid_price)
+        elif side == 'sell':
+            return 2 * (mid_price - trade_price)
+        else:
+            return 2 * abs(trade_price - mid_price)
+    
+    def calculate_realized_spread(self, trade_price: float, mid_price_before: float,
+                                  mid_price_after: float, side: str) -> float:
+        """
+        Calculate realized spread (price impact measure).
+        Realized Spread = 2 * (trade_price - mid_price_after) for buy
+                        = 2 * (mid_price_after - trade_price) for sell
+        
+        Measures the permanent price impact of the trade.
+        """
+        if side == 'buy':
+            return 2 * (trade_price - mid_price_after)
+        elif side == 'sell':
+            return 2 * (mid_price_after - trade_price)
+        else:
+            return 0.0
+    
+    def update_trade_history(self, trade_info: dict):
+        """Track trade for analysis."""
+        self.trade_history.append({
+            'timestamp': trade_info.get('timestamp', datetime.now()),
+            'price': trade_info['price'],
+            'volume': trade_info['volume'],
+            'side': trade_info['side'],
+            'effective_spread': trade_info.get('effective_spread', 0),
+            'mid_price': trade_info['mid_price']
+        })
+    
+    def detect_trade_anomalies(self) -> List[Dict]:
+        """
+        Detect unusual trade patterns.
+        Returns list of anomaly dictionaries.
+        """
+        anomalies = []
+        
+        if len(self.trade_history) < 10:
+            return anomalies
+        
+        recent_trades = list(self.trade_history)[-20:]
+        
+        # Check for unusual trade sizes
+        volumes = [t['volume'] for t in recent_trades]
+        avg_volume = np.mean(volumes)
+        std_volume = np.std(volumes)
+        
+        if std_volume > 0:
+            last_trade = recent_trades[-1]
+            z_score = (last_trade['volume'] - avg_volume) / std_volume
+            
+            if abs(z_score) > 3:  # 3 standard deviations
+                anomalies.append({
+                    'type': 'UNUSUAL_TRADE_SIZE',
+                    'severity': 'MEDIUM' if abs(z_score) < 5 else 'HIGH',
+                    'message': f'Unusual trade size: {last_trade["volume"]} '
+                              f'(z-score: {z_score:.2f})',
+                    'timestamp': last_trade['timestamp'],
+                    'trade_volume': last_trade['volume'],
+                    'avg_volume': avg_volume,
+                    'z_score': z_score
+                })
+        
+        # Check for rapid sequential trades (potential manipulation)
+        if len(recent_trades) >= 5:
+            last_5_trades = recent_trades[-5:]
+            time_diffs = []
+            for i in range(1, len(last_5_trades)):
+                t1 = last_5_trades[i-1]['timestamp']
+                t2 = last_5_trades[i]['timestamp']
+                if isinstance(t1, datetime) and isinstance(t2, datetime):
+                    time_diffs.append((t2 - t1).total_seconds())
+            
+            if time_diffs and np.mean(time_diffs) < 0.1:  # <100ms between trades
+                anomalies.append({
+                    'type': 'RAPID_TRADING',
+                    'severity': 'MEDIUM',
+                    'message': f'Rapid sequential trades detected: '
+                              f'{len(last_5_trades)} trades in {sum(time_diffs):.3f}s',
+                    'timestamp': last_5_trades[-1]['timestamp'],
+                    'trade_count': len(last_5_trades),
+                    'avg_interval_ms': np.mean(time_diffs) * 1000
+                })
+        
+        return anomalies
+
 class DataValidator:
     """Validates market data snapshots for sanity and completeness."""
     
@@ -400,6 +542,11 @@ class AnalyticsEngine:
         # Iceberg Order Detection
         self.iceberg_candidates = defaultdict(lambda: {'fills': 0, 'volume': 0, 'first_seen': None})
         self.repeated_fills_history = deque(maxlen=100)
+        
+        # Priority #14: Trade Data Integration
+        self.trade_classifier = TradeClassifier(tick_size=0.01)
+        self.mid_price_history = deque(maxlen=100)  # Track mid-prices for realized spread
+        self.trade_metrics_history = deque(maxlen=1000)  # Store trade metrics
     
     def detect_advanced_anomalies(self, snapshot: dict) -> list:
         """
@@ -675,12 +822,78 @@ class AnalyticsEngine:
         # Normalize OFI (simple scaling for UI)
         ofi_normalized = np.clip(ofi / 500, -1, 1) # Assuming avg size ~500
 
-        # --- Feature H: V-PIN Calculation ---
-        # Removed as per user request (Data does not support trade volume)
-        vpin = 0
-            
+        # Get mid_price and spread early for trade classification
         spread = best_ask_px - best_bid_px
         mid_price = snapshot['mid_price']
+
+        # --- Feature H: V-PIN Calculation (Priority #14) ---
+        # Track mid-price history for realized spread calculations
+        self.mid_price_history.append(mid_price)
+        
+        # Process trade data if present
+        trade_volume = snapshot.get('trade_volume', 0)
+        trade_price = snapshot.get('last_trade_price', mid_price)
+        
+        vpin = 0
+        trade_side = None
+        effective_spread = 0
+        realized_spread = 0
+        
+        if trade_volume > 0:
+            # Classify trade using Lee-Ready algorithm
+            trade_side = self.trade_classifier.classify_trade(
+                trade_price, mid_price, best_bid_px, best_ask_px
+            )
+            
+            # Calculate effective spread
+            effective_spread = self.trade_classifier.calculate_effective_spread(
+                trade_price, mid_price, trade_side
+            )
+            
+            # Calculate realized spread (if we have previous mid-price)
+            if len(self.mid_price_history) >= 2:
+                mid_price_before = self.mid_price_history[-2]
+                realized_spread = self.trade_classifier.calculate_realized_spread(
+                    trade_price, mid_price_before, mid_price, trade_side
+                )
+            
+            # Update V-PIN buckets
+            if trade_side == 'buy':
+                self.current_bucket_buy += trade_volume
+            elif trade_side == 'sell':
+                self.current_bucket_sell += trade_volume
+            
+            self.current_bucket_vol += trade_volume
+            
+            # Record trade info
+            trade_info = {
+                'timestamp': snapshot.get('timestamp', datetime.now()),
+                'price': trade_price,
+                'volume': trade_volume,
+                'side': trade_side,
+                'effective_spread': effective_spread,
+                'realized_spread': realized_spread,
+                'mid_price': mid_price
+            }
+            self.trade_classifier.update_trade_history(trade_info)
+            self.trade_metrics_history.append(trade_info)
+            
+            # Complete bucket and calculate V-PIN
+            if self.current_bucket_vol >= self.bucket_size:
+                # Calculate order imbalance for this bucket
+                total_vol = self.current_bucket_buy + self.current_bucket_sell
+                if total_vol > 0:
+                    bucket_oi = abs(self.current_bucket_buy - self.current_bucket_sell) / total_vol
+                    self.bucket_history.append(bucket_oi)
+                
+                # Calculate V-PIN as average of recent bucket imbalances
+                if len(self.bucket_history) >= 10:  # Need sufficient history
+                    vpin = np.mean(self.bucket_history)
+                
+                # Reset bucket
+                self.current_bucket_vol = 0
+                self.current_bucket_buy = 0
+                self.current_bucket_sell = 0
         
         # Multi-level Weighted OBI (Level 1 has more weight)
         w_obi_bid = 0
@@ -711,10 +924,19 @@ class AnalyticsEngine:
         snapshot['spread'] = round(spread, 4)
         snapshot['obi'] = round(obi, 4)
         snapshot['ofi'] = round(ofi_normalized, 4)
-        snapshot['vpin'] = round(vpin, 4) # Feature H
+        snapshot['vpin'] = round(vpin, 4) # Feature H (Priority #14)
         snapshot['microprice'] = round(microprice, 2)
         snapshot['divergence'] = round(divergence, 4)
         snapshot['directional_prob'] = round(directional_prob * 100, 1)
+        
+        # Priority #14: Add trade metrics
+        if trade_volume > 0:
+            snapshot['trade_side'] = trade_side
+            snapshot['effective_spread'] = round(effective_spread, 4)
+            snapshot['realized_spread'] = round(realized_spread, 4)
+            snapshot['trade_classified'] = True
+        else:
+            snapshot['trade_classified'] = False
         
         # Add L1 fields
         snapshot['best_bid'] = best_bid_px
@@ -1166,6 +1388,10 @@ class AnalyticsEngine:
                 "severity": "critical",
                 "message": f"Market Regime: CRITICAL/MANIPULATION"
             })
+        
+        # Priority #14: Trade Anomaly Detection
+        trade_anomalies = self.trade_classifier.detect_trade_anomalies()
+        anomalies.extend(trade_anomalies)
         
         # Process alerts through AlertManager
         current_time = datetime.now()
