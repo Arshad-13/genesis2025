@@ -31,6 +31,12 @@ message ProcessedSnapshot {
   double ofi = 4;
   double obi = 5;
   repeated Anomaly anomalies = 6;
+  double microprice = 7;
+  double divergence = 8;
+  double directional_prob = 9;
+  int32 regime = 10;
+  string regime_label = 11;
+  double vpin = 12;
 }
 
 // -------- Service --------

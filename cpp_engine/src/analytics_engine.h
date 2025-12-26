@@ -1,6 +1,7 @@
 #pragma once
 
 #include "analytics.grpc.pb.h"
+#include <deque>
 
 using analytics::Snapshot;
 using analytics::ProcessedSnapshot;
@@ -22,6 +23,7 @@ private:
     
     // Dynamic baselines
     double avg_spread;
+    double avg_spread_sq;
     double avg_l1_vol;
     double alpha; // EWMA smoothing factor
 };

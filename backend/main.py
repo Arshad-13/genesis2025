@@ -21,7 +21,7 @@ from collections import defaultdict, deque
 from grpc_client.analytics_client import CppAnalyticsClient
 
 
-USE_CPP_ENGINE = False  # feature flag - C++ engine is stub, use Python
+USE_CPP_ENGINE = True  # feature flag - C++ engine is stub, use Python
 
 
 def sanitize(obj):
@@ -262,10 +262,18 @@ def analytics_worker():
 
                 processed = {
                     "timestamp": snapshot["timestamp"],
+                    "bids": snapshot["bids"],  # Include original bids
+                    "asks": snapshot["asks"],  # Include original asks
                     "mid_price": result["mid_price"],
                     "spread": result["spread"],
                     "ofi": result["ofi"],
                     "obi": result["obi"],
+                    "microprice": result["microprice"],
+                    "divergence": result["divergence"],
+                    "directional_prob": result["directional_prob"],
+                    "regime": result["regime"],
+                    "regime_label": result["regime_label"],
+                    "vpin": result["vpin"],
                     "anomalies": result["anomalies"],
                 }
 

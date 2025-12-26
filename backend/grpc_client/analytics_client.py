@@ -4,7 +4,7 @@ from . import analytics_pb2, analytics_pb2_grpc
 
 
 class CppAnalyticsClient:
-    def __init__(self, host="localhost", port=50051, timeout_ms=50):
+    def __init__(self, host="localhost", port=50051, timeout_ms=500):
         self.channel = grpc.insecure_channel(f"{host}:{port}")
         self.stub = analytics_pb2_grpc.AnalyticsServiceStub(self.channel)
         self.timeout = timeout_ms / 1000.0
@@ -34,6 +34,12 @@ class CppAnalyticsClient:
             "spread": resp.spread,
             "ofi": resp.ofi,
             "obi": resp.obi,
+            "microprice": resp.microprice,
+            "divergence": resp.divergence,
+            "directional_prob": resp.directional_prob,
+            "regime": resp.regime,
+            "regime_label": resp.regime_label,
+            "vpin": resp.vpin,
             "anomalies": [
                 {
                     "type": a.type,
