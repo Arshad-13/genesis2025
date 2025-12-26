@@ -6,6 +6,7 @@ pydantic
 websockets
 scikit-learn
 grpcio
+grpcio-tools
 protobuf
 sqlalchemy 
 asyncpg

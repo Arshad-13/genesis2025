@@ -31,6 +31,19 @@ message ProcessedSnapshot {
   double ofi = 4;
   double obi = 5;
   repeated Anomaly anomalies = 6;
+  double microprice = 7;
+  double divergence = 8;
+  double directional_prob = 9;
+  double vpin = 10;
+  int32 regime = 11;
+  string regime_label = 12;
+  double best_bid = 13;
+  double best_ask = 14;
+  double q_bid = 15;
+  double q_ask = 16;
+  int32 gap_count = 17;
+  double gap_severity_score = 18;
+  double spoofing_risk = 19;
 }
 
 // -------- Service --------
