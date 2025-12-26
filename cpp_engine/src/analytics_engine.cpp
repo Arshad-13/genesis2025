@@ -23,7 +23,7 @@ ProcessedSnapshot AnalyticsEngine::processSnapshot(const Snapshot& snapshot) {
     // Always set default values first
     result.set_spread(0.0);
     result.set_ofi(0.0);
-    result.set_obi(0.0);
+    result.set_obi(20.0);
     result.set_microprice(snapshot.mid_price());
     result.set_divergence(0.0);
     result.set_directional_prob(50.0);

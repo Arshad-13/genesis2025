@@ -35,6 +35,7 @@ public:
 
         // Use real analytics engine
         *response = engine.processSnapshot(*request);
+        std::cout << *response << std::endl;
         
         std::cout << "Results: Spread=" << response->spread() 
                   << ", OFI=" << response->ofi() 

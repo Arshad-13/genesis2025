@@ -6,7 +6,7 @@ from typing import List
 import os
 import pandas as pd
 
-from analytics import AnalyticsEngine, db_row_to_snapshot, MarketSimulator
+from analytics_core import AnalyticsEngine, db_row_to_snapshot, MarketSimulator
 from replay import ReplayController
 from db import get_connection, return_connection
 
@@ -18,7 +18,7 @@ import time
 import json
 from collections import defaultdict, deque
 
-from grpc_client.analytics_client import CppAnalyticsClient
+from analytics.analytics_client import CppAnalyticsClient
 
 
 USE_CPP_ENGINE = True  # feature flag - C++ engine is stub, use Python
