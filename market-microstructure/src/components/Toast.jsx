@@ -55,7 +55,7 @@ export default function Toast({ message, type = 'info', onClose }) {
           padding: '0 4px'
         }}
       >
-        \u00d7
+        ×
       </button>
       <style jsx>{`
         @keyframes slideIn {

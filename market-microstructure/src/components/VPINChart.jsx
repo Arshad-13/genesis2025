@@ -32,8 +32,15 @@ export default function VPINChart({ data }) {
 
   if (!chartData) {
     return (
-      <div className="panel-content empty-state">
-        <div className="empty-text">Waiting for V-PIN data...</div>
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        height: '100%',
+        color: '#6b7280',
+        fontSize: '0.875rem'
+      }}>
+        Waiting for V-PIN data...
       </div>
     );
   }
@@ -49,25 +56,40 @@ export default function VPINChart({ data }) {
             marker: {
               color: chartData.marker.color
             },
-            name: 'V-PIN'
+            name: 'V-PIN',
+            hovertemplate: '<b>%{y:.3f}</b><br>%{x}<extra></extra>'
           }
         ]}
         layout={{
           autosize: true,
-          margin: { l: 30, r: 10, t: 10, b: 30 },
+          margin: { l: 35, r: 10, t: 20, b: 30 },
           paper_bgcolor: 'rgba(0,0,0,0)',
           plot_bgcolor: 'rgba(0,0,0,0)',
           xaxis: {
             showgrid: false,
             color: '#6b7280',
-            tickformat: '%H:%M:%S'
+            tickformat: '%H:%M',
+            tickangle: -45,
+            nticks: 6,
+            tickfont: {
+              size: 9
+            }
           },
           yaxis: {
             showgrid: true,
             gridcolor: '#374151',
             color: '#6b7280',
             range: [0, 1],
-            title: 'V-PIN Probability'
+            title: {
+              text: 'V-PIN',
+              font: {
+                size: 10
+              }
+            },
+            tickfont: {
+              size: 9
+            },
+            dtick: 0.2
           },
           shapes: [
             {
@@ -83,60 +105,79 @@ export default function VPINChart({ data }) {
               }
             }
           ],
-          showlegend: false
+          showlegend: false,
+          bargap: 0.2
         }}
         useResizeHandler={true}
         style={{ width: '100%', height: '100%' }}
-        config={{ displayModeBar: false }}
+        config={{ 
+          displayModeBar: false,
+          responsive: true
+        }}
       />
       
-      <div className="vpin-legend">
-        <div className="legend-item">
-          <span className="dot low"></span> Low Risk
+      <div style={{
+        position: 'absolute',
+        top: '5px',
+        right: '10px',
+        background: 'rgba(17, 24, 39, 0.9)',
+        padding: '4px 8px',
+        borderRadius: '4px',
+        fontSize: '0.65rem',
+        display: 'flex',
+        gap: '8px',
+        pointerEvents: 'none',
+        border: '1px solid #374151'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '3px',
+          color: '#9ca3af',
+          whiteSpace: 'nowrap'
+        }}>
+          <span style={{
+            width: '6px',
+            height: '6px',
+            borderRadius: '50%',
+            backgroundColor: '#22c55e',
+            display: 'inline-block'
+          }}></span>
+          <span>Low</span>
         </div>
-        <div className="legend-item">
-          <span className="dot medium"></span> Medium
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '3px',
+          color: '#9ca3af',
+          whiteSpace: 'nowrap'
+        }}>
+          <span style={{
+            width: '6px',
+            height: '6px',
+            borderRadius: '50%',
+            backgroundColor: '#eab308',
+            display: 'inline-block'
+          }}></span>
+          <span>Med</span>
         </div>
-        <div className="legend-item">
-          <span className="dot high"></span> High Risk
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '3px',
+          color: '#9ca3af',
+          whiteSpace: 'nowrap'
+        }}>
+          <span style={{
+            width: '6px',
+            height: '6px',
+            borderRadius: '50%',
+            backgroundColor: '#ef4444',
+            display: 'inline-block'
+          }}></span>
+          <span>High</span>
         </div>
       </div>
-
-      <style jsx>{`
-        .panel-content.empty-state {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          height: 100%;
-          color: #6b7280;
-        }
-        .vpin-legend {
-          position: absolute;
-          top: 10px;
-          right: 10px;
-          background: rgba(17, 24, 39, 0.8);
-          padding: 4px 8px;
-          border-radius: 4px;
-          font-size: 0.7rem;
-          display: flex;
-          gap: 8px;
-          pointer-events: none;
-        }
-        .legend-item {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          color: #9ca3af;
-        }
-        .dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-        }
-        .dot.low { background-color: #22c55e; }
-        .dot.medium { background-color: #eab308; }
-        .dot.high { background-color: #ef4444; }
-      `}</style>
     </div>
   );
 }

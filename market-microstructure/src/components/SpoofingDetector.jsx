@@ -1,4 +1,6 @@
 import React from 'react';
+import { FaCircleCheck } from "react-icons/fa6";
+import { BsGraphUpArrow, BsGraphDownArrow } from "react-icons/bs";
 
 export default function SpoofingDetector({ snapshot, data = [] }) {
   // Get recent spoofing events
@@ -13,7 +15,7 @@ export default function SpoofingDetector({ snapshot, data = [] }) {
   };
 
   const getSideIcon = (side) => {
-    return side === 'BID' ? '📈' : '📉';
+    return side === 'BID' ? <BsGraphUpArrow /> : <BsGraphDownArrow />;
   };
 
   return (
@@ -84,7 +86,7 @@ export default function SpoofingDetector({ snapshot, data = [] }) {
             border: '1px solid rgba(34, 197, 94, 0.3)',
             borderRadius: '6px'
           }}>
-            ✅ No spoofing activity detected
+            <FaCircleCheck /> No spoofing activity detected
           </div>
         )}
       </div>

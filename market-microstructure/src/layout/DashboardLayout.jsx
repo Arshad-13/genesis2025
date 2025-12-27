@@ -456,6 +456,7 @@ export default function DashboardLayout({
               currentSpeed={currentSpeed}
               currentTimestamp={latestSnapshot?.timestamp}
               showToast={showToast}
+              data={data}
             />
           </div>
 

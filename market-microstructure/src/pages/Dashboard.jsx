@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "../layout/DashboardLayout";
 import Toast from "../components/Toast";
-import DataExport from "../components/DataExport";
+// import DataExport from "../components/DataExport";
 import "../styles/dashboard.css";
 
 const BACKEND_HTTP = import.meta.env.VITE_BACKEND_HTTP || "http://localhost:8000";
@@ -215,7 +215,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Data Export Controls */}
+      {/* Data Export Controls
       <div className="data-export-container" style={{
         position: 'fixed',
         top: '20px',
@@ -223,7 +223,7 @@ export default function Dashboard() {
         zIndex: 1000
       }}>
         <DataExport data={data} showToast={showToast} />
-      </div>
+      </div> */}
 
       <DashboardLayout
         data={data}

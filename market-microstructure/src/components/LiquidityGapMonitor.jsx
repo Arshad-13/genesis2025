@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FaCircleCheck } from "react-icons/fa6";
 
 export default function LiquidityGapMonitor({ snapshot, data = [] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -87,7 +88,7 @@ export default function LiquidityGapMonitor({ snapshot, data = [] }) {
             border: '1px solid rgba(34, 197, 94, 0.3)',
             borderRadius: '6px'
           }}>
-            ✅ No liquidity gaps detected
+            <FaCircleCheck /> No liquidity gaps detected
           </div>
         )}
       </div>

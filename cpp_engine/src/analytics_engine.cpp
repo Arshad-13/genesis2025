@@ -47,17 +47,16 @@ ProcessedSnapshot AnalyticsEngine::processSnapshot(const Snapshot& snapshot) {
         return result;
     }
     
+    // IMPORTANT: Declare spread at function scope so it's available throughout
+    double spread = 0.0;
+    
     if (best_ask_px <= best_bid_px) {
         // Invalid spread, but still try to calculate other metrics
         result.set_spread(0.0);
     } else {
         // Calculate spread
-        double spread = best_ask_px - best_bid_px;
+        spread = best_ask_px - best_bid_px;
         result.set_spread(spread);
-        
-        // Update dynamic spread statistics
-        avg_spread = (1 - alpha) * avg_spread + alpha * spread;
-        avg_spread_sq = (1 - alpha) * avg_spread_sq + alpha * (spread * spread);
     }
     
     // Calculate OFI (Order Flow Imbalance) - simplified
@@ -143,10 +142,14 @@ ProcessedSnapshot AnalyticsEngine::processSnapshot(const Snapshot& snapshot) {
     }
     
     // Update dynamic averages for spread z-score
+    // Now 'spread' is available at this scope
     avg_spread = (1 - alpha) * avg_spread + alpha * spread;
     avg_spread_sq = (1 - alpha) * avg_spread_sq + alpha * (spread * spread);
     double std_spread = std::sqrt(std::max(0.0, avg_spread_sq - avg_spread * avg_spread));
     double spread_z = (spread - avg_spread) / std::max(std_spread, 1e-6);
+    
+    // Normalize OFI for regime classification
+    double ofi_normalized = ofi;  // Already normalized to [-1, 1] range above
     
     // Classify regime
     int regime = classifyRegime(spread_z, obi, volatility, ofi_normalized);

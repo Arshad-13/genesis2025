@@ -1,4 +1,8 @@
 import { useState } from "react";
+import { FaDownload, FaBackward, FaFastForward, FaPause  } from "react-icons/fa";
+import { IoSettingsSharp, IoTime  } from "react-icons/io5";
+import { FaFileCsv } from "react-icons/fa6";
+import { BsFiletypeJson } from "react-icons/bs";
 
 export default function ControlsBar({ 
   onPlay, 
@@ -11,7 +15,8 @@ export default function ControlsBar({
   isPaused = false,
   currentSpeed = 1,
   currentTimestamp = null,
-  showToast
+  showToast,
+  data = [] // Add data prop for downloads
 }) {
   const [speed, setSpeed] = useState(currentSpeed);
   const [speedUpValue, setSpeedUpValue] = useState(2);
@@ -20,6 +25,7 @@ export default function ControlsBar({
   const [tempSpeedUp, setTempSpeedUp] = useState(2);
   const [tempGoBack, setTempGoBack] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
   const handlePlayPause = async () => {
     setIsLoading(true);
@@ -73,6 +79,83 @@ export default function ControlsBar({
     setShowModal(false);
   };
 
+  const handleDownloadCSV = () => {
+    if (!data || data.length === 0) {
+      if (showToast) showToast("No data available to download", "error");
+      return;
+    }
+
+    try {
+      // Get all unique keys from all snapshots
+      const allKeys = new Set();
+      data.forEach(snapshot => {
+        Object.keys(snapshot).forEach(key => {
+          if (typeof snapshot[key] !== 'object' || snapshot[key] === null) {
+            allKeys.add(key);
+          }
+        });
+      });
+
+      const headers = Array.from(allKeys).sort();
+      
+      // Create CSV content
+      let csv = headers.join(",") + "\n";
+      
+      data.forEach(snapshot => {
+        const row = headers.map(header => {
+          const value = snapshot[header];
+          if (value === null || value === undefined) return "";
+          if (typeof value === "string" && value.includes(",")) return `"${value}"`;
+          return value;
+        });
+        csv += row.join(",") + "\n";
+      });
+
+      // Download
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `market_data_${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      if (showToast) showToast("CSV downloaded successfully", "success");
+      setShowDownloadMenu(false);
+    } catch (error) {
+      if (showToast) showToast("Failed to download CSV", "error");
+      console.error("CSV download error:", error);
+    }
+  };
+
+  const handleDownloadJSON = () => {
+    if (!data || data.length === 0) {
+      if (showToast) showToast("No data available to download", "error");
+      return;
+    }
+
+    try {
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `market_data_${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      if (showToast) showToast("JSON downloaded successfully", "success");
+      setShowDownloadMenu(false);
+    } catch (error) {
+      if (showToast) showToast("Failed to download JSON", "error");
+      console.error("JSON download error:", error);
+    }
+  };
+
   const buttonStyle = {
     padding: '8px',
     fontSize: '16px',
@@ -100,7 +183,6 @@ export default function ControlsBar({
     <>
       <div style={{
         display: 'flex',
-        // alignItems: 'center',
         gap: '8px',
         padding: '8px',
         justifyContent: 'center',
@@ -119,11 +201,15 @@ export default function ControlsBar({
             fontSize: '12px',
             color: '#94a3b8',
             fontFamily: 'monospace',
-            marginRight: '8px'
+            marginRight: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px'
           }}>
-            ⏱️ {formatTimestamp(currentTimestamp)}
+            <IoTime /> {formatTimestamp(currentTimestamp)}
           </div>
         )}
+        
         {/* Play/Pause Button */}
         <button 
           onClick={handlePlayPause}
@@ -133,7 +219,7 @@ export default function ControlsBar({
           }}
           title={isPlaying ? 'Pause' : (isPaused ? 'Resume' : 'Play')}
         >
-          {isPlaying ? '⏸' : '▶'}
+          {isPlaying ? <FaPause /> : '▶'}
         </button>
 
         {/* Speed Toggle Button */}
@@ -145,7 +231,7 @@ export default function ControlsBar({
           }}
           title={`Speed: ${speed}x (Toggle to ${speed === 1 ? speedUpValue : 1}x)`}
         >
-          ⚡
+          <FaFastForward />
         </button>
 
         {/* Go Back Button */}
@@ -154,8 +240,79 @@ export default function ControlsBar({
           style={buttonStyle}
           title={`Go back ${goBackSeconds}s`}
         >
-          ⏪
+          <FaBackward />
         </button>
+
+        {/* Download Button with Dropdown */}
+        <div style={{ position: 'relative' }}>
+          <button 
+            onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+            style={{
+              ...buttonStyle,
+              backgroundColor: showDownloadMenu ? '#3b82f6' : '#334155',
+            }}
+            title="Download data"
+          >
+            <FaDownload />
+          </button>
+
+          {/* Download Dropdown Menu */}
+          {showDownloadMenu && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              marginBottom: '4px',
+              backgroundColor: '#1e293b',
+              border: '1px solid #475569',
+              borderRadius: '6px',
+              overflow: 'hidden',
+              zIndex: 1000,
+              boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.3)',
+              minWidth: '120px'
+            }}>
+              <button
+                onClick={handleDownloadCSV}
+                style={{
+                  width: '100%',
+                  padding: '10px 16px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: '#e2e8f0',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  textAlign: 'left',
+                  transition: 'background-color 0.2s',
+                  borderBottom: '1px solid #334155'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#334155'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <FaFileCsv /> CSV
+              </button>
+              <button
+                onClick={handleDownloadJSON}
+                style={{
+                  width: '100%',
+                  padding: '10px 16px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: '#e2e8f0',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  textAlign: 'left',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#334155'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <BsFiletypeJson /> JSON
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Settings Button */}
         <button 
@@ -163,9 +320,24 @@ export default function ControlsBar({
           style={buttonStyle}
           title="Settings"
         >
-          ⋯
+          <IoSettingsSharp />
         </button>
       </div>
+
+      {/* Click outside to close download menu */}
+      {showDownloadMenu && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 999
+          }}
+          onClick={() => setShowDownloadMenu(false)}
+        />
+      )}
 
       {/* Settings Modal */}
       {showModal && (

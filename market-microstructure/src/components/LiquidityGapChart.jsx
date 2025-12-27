@@ -1,6 +1,6 @@
 import Plot from "react-plotly.js";
 import { useMemo, useRef } from "react";
-
+import { GiWaterDrop } from "react-icons/gi";
 export default function LiquidityGapChart({ data = [], onHover }) {
   const lastMidPriceRef = useRef(100);
 
@@ -218,7 +218,7 @@ export default function LiquidityGapChart({ data = [], onHover }) {
         textTransform: 'uppercase', 
         letterSpacing: '0.5px'
       }}>
-        💧 Liquidity Gaps Analysis
+        <GiWaterDrop /> Liquidity Gaps Analysis 
       </h4>
       
       <Plot

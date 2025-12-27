@@ -35,8 +35,8 @@ public:
 
         // Use real analytics engine
         *response = engine.processSnapshot(*request);
-        std::cout << *response << std::endl;
         
+        // Print individual fields instead of trying to print the entire message
         std::cout << "Results: Spread=" << response->spread() 
                   << ", OFI=" << response->ofi() 
                   << ", OBI=" << response->obi() 

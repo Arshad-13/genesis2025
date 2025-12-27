@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export default function SignalMonitor({ snapshot }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,7 +22,6 @@ export default function SignalMonitor({ snapshot }) {
   };
 
   const getTypeIcon = (type) => {
-    // Standardized to use 'type' field consistently
     switch (type) {
       case 'LIQUIDITY_GAP': return '💧';
       case 'SPOOFING': return '🎭';
@@ -30,7 +30,7 @@ export default function SignalMonitor({ snapshot }) {
       case 'REGIME_STRESS': return '📊';
       case 'REGIME_CRISIS': return '🚨';
       case 'LARGE_ORDER': return '📦';
-      case 'SPREAD_SHOCK': return '📏';
+      case 'SPREAD_SHOCK': return '📈';
       default: return '⚠️';
     }
   };
@@ -111,6 +111,86 @@ export default function SignalMonitor({ snapshot }) {
     </div>
   );
 
+  const modalContent = isModalOpen && createPortal(
+    <div 
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999,
+        padding: '40px'
+      }}
+      onClick={() => setIsModalOpen(false)}
+    >
+      <div 
+        style={{
+          backgroundColor: '#1e293b',
+          borderRadius: '12px',
+          border: '2px solid #334155',
+          width: '700px',
+          maxHeight: '80vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Modal Header */}
+        <div style={{
+          padding: '16px 20px',
+          borderBottom: '1px solid #334155',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexShrink: 0
+        }}>
+          <h2 style={{
+            margin: 0,
+            fontSize: '16px',
+            fontWeight: '600',
+            color: '#e2e8f0'
+          }}>
+            🚨 All Market Signals ({sortedAnomalies.length})
+          </h2>
+          <button 
+            onClick={() => setIsModalOpen(false)}
+            style={{
+              padding: '6px 12px',
+              backgroundColor: '#ef4444',
+              border: 'none',
+              borderRadius: '6px',
+              color: '#ffffff',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '600',
+              transition: 'background-color 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
+          >
+            × Close
+          </button>
+        </div>
+
+        {/* Modal Content */}
+        <div style={{
+          flex: 1,
+          overflow: 'auto',
+          padding: '20px'
+        }}>
+          {sortedAnomalies.map((anomaly, idx) => renderSignal(anomaly, idx))}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+
   return (
     <div>
       <div style={{
@@ -144,7 +224,16 @@ export default function SignalMonitor({ snapshot }) {
               borderRadius: '4px',
               cursor: 'pointer',
               fontWeight: '500',
-              marginLeft: '8px'
+              marginLeft: '8px',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#475569';
+              e.currentTarget.style.color = '#60a5fa';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#334155';
+              e.currentTarget.style.color = '#3b82f6';
             }}
           >
             View All ({sortedAnomalies.length})
@@ -156,82 +245,8 @@ export default function SignalMonitor({ snapshot }) {
         {displayedSignals.map((anomaly, idx) => renderSignal(anomaly, idx))}
       </div>
 
-      {/* Modal for All Signals */}
-      {isModalOpen && (
-        <div 
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '40px'
-          }}
-          onClick={() => setIsModalOpen(false)}
-        >
-          <div 
-            style={{
-              backgroundColor: '#1e293b',
-              borderRadius: '12px',
-              border: '2px solid #334155',
-              width: '700px',
-              maxHeight: '80vh',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div style={{
-              padding: '16px 20px',
-              borderBottom: '1px solid #334155',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexShrink: 0
-            }}>
-              <h2 style={{
-                margin: 0,
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#e2e8f0'
-              }}>
-                🚨 All Market Signals ({sortedAnomalies.length})
-              </h2>
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                style={{
-                  padding: '6px 12px',
-                  backgroundColor: '#ef4444',
-                  border: 'none',
-                  borderRadius: '6px',
-                  color: '#ffffff',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '600'
-                }}
-              >
-                ✕ Close
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div style={{
-              flex: 1,
-              overflow: 'auto',
-              padding: '20px'
-            }}>
-              {sortedAnomalies.map((anomaly, idx) => renderSignal(anomaly, idx))}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Render modal via portal */}
+      {modalContent}
     </div>
   );
 }

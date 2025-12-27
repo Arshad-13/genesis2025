@@ -1,5 +1,6 @@
 import Plot from "react-plotly.js";
 import { useMemo } from "react";
+import { FaCircleCheck } from "react-icons/fa6";
 
 export default function SpoofingRiskChart({ data = [] }) {
   const chartData = useMemo(() => {
@@ -87,7 +88,7 @@ export default function SpoofingRiskChart({ data = [] }) {
     if (risk >= 70) return { level: 'CRITICAL', color: '#dc2626', icon: '🚨' };
     if (risk >= 50) return { level: 'HIGH', color: '#ef4444', icon: '⚠️' };
     if (risk >= 30) return { level: 'MEDIUM', color: '#f97316', icon: '👀' };
-    return { level: 'LOW', color: '#22c55e', icon: '✅' };
+    return { level: 'LOW', color: '#22c55e', icon: <FaCircleCheck /> };
   };
 
   const riskInfo = getRiskLevel(chartData.currentRisk);

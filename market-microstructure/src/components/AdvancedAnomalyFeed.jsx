@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { GiWaterDrop } from "react-icons/gi";
 
 export default function AdvancedAnomalyFeed({ data }) {
   // Extract anomalies from snapshot history
@@ -49,7 +50,7 @@ export default function AdvancedAnomalyFeed({ data }) {
       case 'ICEBERG_ORDER': return '🧊';
       case 'UNUSUAL_TRADE_SIZE': return '🐋';
       case 'RAPID_TRADING': return '🏎️';
-      case 'LIQUIDITY_GAP': return '💧';
+      case 'LIQUIDITY_GAP': return <GiWaterDrop />;
       default: return '⚠️';
     }
   };
