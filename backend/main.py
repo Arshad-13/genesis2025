@@ -5,6 +5,7 @@ import logging
 from typing import List
 import os
 import pandas as pd
+import numpy as np
 
 from analytics_core import AnalyticsEngine, db_row_to_snapshot, MarketSimulator
 from replay import ReplayController
@@ -141,42 +142,46 @@ cpp_client = None  # Lazy initialization
 controller = ReplayController()
 simulator = MarketSimulator() # Fallback Simulator
 
+# Engine state lock to prevent race conditions
+engine_state_lock = threading.Lock()
+
 
 def initialize_cpp_engine():
     """Initialize C++ engine with connection test and fallback."""
     global cpp_client, engine_mode
     
-    if not USE_CPP_ENGINE:
-        logger.info("C++ engine disabled via config, using Python engine")
-        engine_mode = "python"
-        return False
-    
-    try:
-        cpp_client = CppAnalyticsClient(host=CPP_ENGINE_HOST, port=CPP_ENGINE_PORT, timeout_ms=100)
+    with engine_state_lock:
+        if not USE_CPP_ENGINE:
+            logger.info("C++ engine disabled via config, using Python engine")
+            engine_mode = "python"
+            return False
         
-        # Test connection with dummy snapshot
-        test_snapshot = {
-            "timestamp": "2024-01-01T00:00:00",
-            "bids": [[100.0, 10.0], [99.9, 20.0]],
-            "asks": [[100.1, 15.0], [100.2, 25.0]],
-            "mid_price": 100.05
-        }
-        result = cpp_client.process_snapshot(test_snapshot)
-        
-        logger.info(f"✅ C++ engine connected at {CPP_ENGINE_HOST}:{CPP_ENGINE_PORT} (latency: {result.get('latency_ms', 0):.2f}ms)")
-        engine_mode = "cpp"
-        return True
-        
-    except grpc.RpcError as e:
-        logger.warning(f"⚠️  C++ engine unavailable ({e.code()}), falling back to Python engine")
-        engine_mode = "python"
-        cpp_client = None
-        return False
-    except Exception as e:
-        logger.warning(f"⚠️  C++ engine initialization failed: {e}, falling back to Python engine")
-        engine_mode = "python"
-        cpp_client = None
-        return False
+        try:
+            cpp_client = CppAnalyticsClient(host=CPP_ENGINE_HOST, port=CPP_ENGINE_PORT, timeout_ms=100)
+            
+            # Test connection with dummy snapshot
+            test_snapshot = {
+                "timestamp": "2024-01-01T00:00:00",
+                "bids": [[100.0, 10.0], [99.9, 20.0]],
+                "asks": [[100.1, 15.0], [100.2, 25.0]],
+                "mid_price": 100.05
+            }
+            result = cpp_client.process_snapshot(test_snapshot)
+            
+            logger.info(f"✅ C++ engine connected at {CPP_ENGINE_HOST}:{CPP_ENGINE_PORT} (latency: {result.get('latency_ms', 0):.2f}ms)")
+            engine_mode = "cpp"
+            return True
+            
+        except grpc.RpcError as e:
+            logger.warning(f"⚠️  C++ engine unavailable ({e.code()}), falling back to Python engine")
+            engine_mode = "python"
+            cpp_client = None
+            return False
+        except Exception as e:
+            logger.warning(f"⚠️  C++ engine initialization failed: {e}, falling back to Python engine")
+            engine_mode = "python"
+            cpp_client = None
+            return False
 
 MAX_BUFFER = 100
 data_buffer: List[dict] = []
@@ -334,8 +339,24 @@ def analytics_worker():
                     
                     if consecutive_cpp_failures >= MAX_CPP_FAILURES:
                         logger.error(f"C++ engine failed {MAX_CPP_FAILURES} times, switching to Python permanently")
-                        engine_mode = "python"
-                        cpp_client = None
+                        with engine_state_lock:
+                            engine_mode = "python"
+                            cpp_client = None
+                    
+                    # Fallback to Python for this snapshot
+                    processed = engine.process_snapshot(snapshot)
+                    processing_time = (time.time() - processing_start) * 1000
+                    used_engine = "python_fallback"
+                    
+                except (ConnectionError, TimeoutError) as e:
+                    consecutive_cpp_failures += 1
+                    logger.error(f"C++ engine connection error ({consecutive_cpp_failures}/{MAX_CPP_FAILURES}): {e}")
+                    
+                    if consecutive_cpp_failures >= MAX_CPP_FAILURES:
+                        logger.error(f"C++ engine failed {MAX_CPP_FAILURES} times, switching to Python permanently")
+                        with engine_state_lock:
+                            engine_mode = "python"
+                            cpp_client = None
                     
                     # Fallback to Python for this snapshot
                     processed = engine.process_snapshot(snapshot)
@@ -343,7 +364,7 @@ def analytics_worker():
                     used_engine = "python_fallback"
                     
                 except Exception as e:
-                    logger.error(f"C++ engine unexpected error: {e}")
+                    logger.error(f"C++ engine unexpected error: {e}", exc_info=True)
                     processed = engine.process_snapshot(snapshot)
                     processing_time = (time.time() - processing_start) * 1000
                     used_engine = "python_fallback"
@@ -358,9 +379,15 @@ def analytics_worker():
             processed_snapshot_queue.put((processed, processing_time))
             metrics.record_engine_latency(used_engine.replace("_fallback", ""), processing_time)
 
+        except KeyError as e:
+            metrics.record_error("analytics_worker_missing_field")
+            logger.error(f"Analytics worker missing field error: {e}")
+        except ValueError as e:
+            metrics.record_error("analytics_worker_value_error")
+            logger.error(f"Analytics worker value error: {e}")
         except Exception as e:
             metrics.record_error("analytics_worker_error")
-            logger.error(f"Analytics worker error: {e}")
+            logger.error(f"Analytics worker unexpected error: {e}", exc_info=True)
 
 
 # --------------------------------------------------
@@ -1027,7 +1054,7 @@ def switch_engine(target_engine: str):
         if not USE_CPP_ENGINE:
             return {"status": "error", "message": "C++ engine disabled in configuration"}
         
-        # Try to reinitialize C++ engine
+        # Try to reinitialize C++ engine (uses lock internally)
         success = initialize_cpp_engine()
         if success:
             return {"status": "success", "message": "Switched to C++ engine", "engine": engine_mode}
@@ -1035,7 +1062,8 @@ def switch_engine(target_engine: str):
             return {"status": "error", "message": "C++ engine unavailable, using Python", "engine": engine_mode}
     
     elif target_engine == "python":
-        engine_mode = "python"
+        with engine_state_lock:
+            engine_mode = "python"
         logger.info("Manually switched to Python engine")
         return {"status": "success", "message": "Switched to Python engine", "engine": engine_mode}
 
