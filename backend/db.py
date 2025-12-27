@@ -19,6 +19,27 @@ _pool_stats = {
     "pool_created_at": None
 }
 
+# Configuration from environment variables with validation
+def _get_db_config() -> dict:
+    """Get and validate database configuration from environment variables."""
+    config = {
+        'host': os.getenv('DB_HOST', '127.0.0.1'),
+        'port': int(os.getenv('DB_PORT', '5433')),
+        'database': os.getenv('DB_NAME', 'orderbook'),
+        'user': os.getenv('DB_USER', 'postgres'),
+        'password': os.getenv('DB_PASSWORD', 'postgres')
+    }
+    
+    # Validate critical fields
+    if not config['database']:
+        raise ValueError("Database name (DB_NAME) cannot be empty")
+    if not config['user']:
+        raise ValueError("Database user (DB_USER) cannot be empty")
+    if not config['password']:
+        logger.warning("⚠️ DB_PASSWORD not set or empty - using default credentials")
+    
+    return config
+
 # Configuration from environment variables with production defaults
 POOL_MIN_SIZE = int(os.getenv("DB_POOL_MIN_SIZE", "2"))
 POOL_MAX_SIZE = int(os.getenv("DB_POOL_MAX_SIZE", "10"))
@@ -26,6 +47,14 @@ POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "30"))
 COMMAND_TIMEOUT = int(os.getenv("DB_COMMAND_TIMEOUT", "60"))
 MAX_RETRIES = int(os.getenv("DB_MAX_RETRIES", "3"))
 RETRY_DELAY = float(os.getenv("DB_RETRY_DELAY", "1.0"))
+
+# Validate pool size limits (Issue #10)
+if POOL_MIN_SIZE < 1:
+    raise ValueError(f"DB_POOL_MIN_SIZE must be >= 1, got {POOL_MIN_SIZE}")
+if POOL_MAX_SIZE < POOL_MIN_SIZE:
+    raise ValueError(f"DB_POOL_MAX_SIZE ({POOL_MAX_SIZE}) must be >= DB_POOL_MIN_SIZE ({POOL_MIN_SIZE})")
+if POOL_MAX_SIZE > 50:
+    logger.warning(f"⚠️ DB_POOL_MAX_SIZE ({POOL_MAX_SIZE}) is very high. Consider lowering to avoid resource exhaustion.")
 
 async def get_connection_pool() -> asyncpg.Pool:
     """Get or create an async connection pool with retry logic."""
@@ -39,12 +68,13 @@ async def get_connection_pool() -> asyncpg.Pool:
                 
                 while retry_count < MAX_RETRIES:
                     try:
+                        db_config = _get_db_config()
                         _connection_pool = await asyncpg.create_pool(
-                            host="127.0.0.1",
-                            port=5433,
-                            database="orderbook",
-                            user="postgres",
-                            password="postgres",
+                            host=db_config['host'],
+                            port=db_config['port'],
+                            database=db_config['database'],
+                            user=db_config['user'],
+                            password=db_config['password'],
                             min_size=POOL_MIN_SIZE,
                             max_size=POOL_MAX_SIZE,
                             command_timeout=COMMAND_TIMEOUT,

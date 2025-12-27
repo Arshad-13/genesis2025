@@ -1,5 +1,8 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import asyncio
 import logging
 from typing import List
@@ -49,6 +52,11 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# --------------------------------------------------
+# Rate Limiting (Issue #11)
+# --------------------------------------------------
+limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 # --------------------------------------------------
 # Monitoring & Metrics
@@ -125,6 +133,8 @@ metrics = MetricsCollector()
 # FastAPI App
 # --------------------------------------------------
 app = FastAPI()
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,

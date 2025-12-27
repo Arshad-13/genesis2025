@@ -96,59 +96,107 @@ class TradeClassifier:
     
     def detect_trade_anomalies(self) -> List[Dict]:
         """
-        Detect unusual trade patterns.
+        Detect unusual trade patterns using shared anomaly detection utilities.
         Returns list of anomaly dictionaries.
         """
+        from analytics_core import AnomalyDetectionUtils
+        
         anomalies = []
         
         if len(self.trade_history) < 10:
             return anomalies
         
         recent_trades = list(self.trade_history)[-20:]
-        
-        # Check for unusual trade sizes
         volumes = [t['volume'] for t in recent_trades]
-        avg_volume = np.mean(volumes)
-        std_volume = np.std(volumes)
         
-        if std_volume > 0:
+        # Use shared utility for volume anomaly detection
+        volume_anomaly = AnomalyDetectionUtils.detect_volume_anomaly(
+            volumes, recent_trades[-1]['volume'] if recent_trades else 0
+        )
+        if volume_anomaly:
             last_trade = recent_trades[-1]
-            z_score = (last_trade['volume'] - avg_volume) / std_volume
-            
-            if abs(z_score) > 3:  # 3 standard deviations
-                anomalies.append({
-                    'type': 'UNUSUAL_TRADE_SIZE',
-                    'severity': 'MEDIUM' if abs(z_score) < 5 else 'HIGH',
-                    'message': f'Unusual trade size: {last_trade["volume"]} '
-                              f'(z-score: {z_score:.2f})',
-                    'timestamp': last_trade['timestamp'],
-                    'trade_volume': last_trade['volume'],
-                    'avg_volume': avg_volume,
-                    'z_score': z_score
-                })
+            anomalies.append({
+                'type': 'UNUSUAL_TRADE_SIZE',
+                'severity': volume_anomaly['severity'],
+                'message': f'Unusual trade size: {last_trade["volume"]} '
+                          f'(z-score: {volume_anomaly["z_score"]:.2f})',
+                'timestamp': last_trade['timestamp'],
+                'trade_volume': last_trade['volume'],
+                'avg_volume': volume_anomaly['avg'],
+                'z_score': volume_anomaly['z_score']
+            })
         
-        # Check for rapid sequential trades (potential manipulation)
+        # Use shared utility for rapid trading detection
         if len(recent_trades) >= 5:
             last_5_trades = recent_trades[-5:]
-            time_diffs = []
-            for i in range(1, len(last_5_trades)):
-                t1 = last_5_trades[i-1]['timestamp']
-                t2 = last_5_trades[i]['timestamp']
-                if isinstance(t1, datetime) and isinstance(t2, datetime):
-                    time_diffs.append((t2 - t1).total_seconds())
-            
-            if time_diffs and np.mean(time_diffs) < 0.1:  # <100ms between trades
+            rapid_trading = AnomalyDetectionUtils.detect_rapid_trading(
+                last_5_trades, threshold_sec=0.1
+            )
+            if rapid_trading:
                 anomalies.append({
                     'type': 'RAPID_TRADING',
                     'severity': 'MEDIUM',
-                    'message': f'Rapid sequential trades detected: '
-                              f'{len(last_5_trades)} trades in {sum(time_diffs):.3f}s',
+                    'message': rapid_trading['message'],
                     'timestamp': last_5_trades[-1]['timestamp'],
-                    'trade_count': len(last_5_trades),
-                    'avg_interval_ms': np.mean(time_diffs) * 1000
+                    'trade_count': rapid_trading['trade_count'],
+                    'avg_interval_ms': rapid_trading['avg_interval_ms']
                 })
         
         return anomalies
+
+class AnomalyDetectionUtils:
+    """Shared utilities for anomaly detection across different modules."""
+    
+    @staticmethod
+    def detect_volume_anomaly(volumes: List[float], current_volume: float, 
+                             threshold_sigma: float = 3.0) -> Optional[Dict]:
+        """Detect volume anomalies using z-score method."""
+        if len(volumes) < 2:
+            return None
+        
+        avg_volume = np.mean(volumes)
+        std_volume = np.std(volumes)
+        
+        if std_volume == 0:
+            return None
+        
+        z_score = (current_volume - avg_volume) / std_volume
+        
+        if abs(z_score) > threshold_sigma:
+            return {
+                'z_score': z_score,
+                'avg': avg_volume,
+                'std': std_volume,
+                'severity': 'MEDIUM' if abs(z_score) < 5 else 'HIGH'
+            }
+        return None
+    
+    @staticmethod
+    def detect_rapid_trading(trades: List[Dict], threshold_sec: float = 0.1) -> Optional[Dict]:
+        """Detect rapid sequential trading patterns."""
+        if len(trades) < 2:
+            return None
+        
+        time_diffs = []
+        for i in range(1, len(trades)):
+            t1 = trades[i-1].get('timestamp')
+            t2 = trades[i].get('timestamp')
+            if isinstance(t1, datetime) and isinstance(t2, datetime):
+                time_diffs.append((t2 - t1).total_seconds())
+        
+        if not time_diffs:
+            return None
+        
+        avg_interval = np.mean(time_diffs)
+        if avg_interval < threshold_sec:
+            return {
+                'trade_count': len(trades),
+                'total_time': sum(time_diffs),
+                'avg_interval_ms': avg_interval * 1000,
+                'message': f'Rapid sequential trades detected: '
+                          f'{len(trades)} trades in {sum(time_diffs):.3f}s'
+            }
+        return None
 
 class DataValidator:
     """Validates market data snapshots for sanity and completeness."""
