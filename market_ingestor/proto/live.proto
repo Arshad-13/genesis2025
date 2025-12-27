@@ -10,18 +10,28 @@ message PriceLevel {
 message LiveSnapshot {
   string source = 1;        // BINANCE
   string symbol = 2;        // BTCUSDT
-  string exchange_ts = 3;   // Binance event time
-  string ingest_ts = 4;     // Ingestor receive time
+  string exchange_ts = 3;   // Binance event time (ms → ISO)
+  string ingest_ts = 4;     // when ingestor received it
 
   repeated PriceLevel bids = 5;
   repeated PriceLevel asks = 6;
   double mid_price = 7;
 }
 
-service LiveFeedService {
-  rpc StreamSnapshots (SubscribeRequest) returns (stream LiveSnapshot);
+message SubscribeRequest {
+  string source = 1; // "BINANCE"
 }
 
-message SubscribeRequest {
-  string source = 1;  // BINANCE
+message ChangeSymbolRequest {
+  string symbol = 1; // "BTCUSDT", "ETHUSDT", "SOLUSDT"
+}
+
+message ChangeSymbolResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+service LiveFeedService {
+  rpc StreamSnapshots(SubscribeRequest) returns (stream LiveSnapshot);
+  rpc ChangeSymbol(ChangeSymbolRequest) returns (ChangeSymbolResponse);
 }
