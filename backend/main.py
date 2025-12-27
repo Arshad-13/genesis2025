@@ -1,8 +1,9 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 import asyncio
 import logging
 from typing import List
@@ -134,7 +135,7 @@ metrics = MetricsCollector()
 # --------------------------------------------------
 app = FastAPI()
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -605,9 +606,15 @@ async def replay_loop():
                 
                 await asyncio.sleep(0.5)
     
+    except asyncio.CancelledError:
+        logger.info("Replay loop cancelled during shutdown")
     finally:
         if conn:
-            await return_connection(conn)
+            try:
+                await return_connection(conn)
+            except Exception as e:
+                # Ignore errors during cleanup
+                logger.debug(f"Connection cleanup during shutdown: {e}")
 
 # --------------------------------------------------
 # Startup Hook

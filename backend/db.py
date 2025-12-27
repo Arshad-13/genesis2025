@@ -121,13 +121,25 @@ async def get_connection():
 
 async def return_connection(conn):
     """Return a connection to the pool with metrics tracking."""
+    if conn is None:
+        return
+    
     try:
+        # Check if connection is still valid and not already released
+        if hasattr(conn, '_con') and conn._con is None:
+            # Connection already released
+            return
+            
         pool = await get_connection_pool()
+        if pool is None:
+            # Pool already closed
+            return
+            
         await pool.release(conn)
         _pool_stats["total_releases"] += 1
     except Exception as e:
-        logger.error(f"Failed to release connection: {e}")
-        raise
+        # Silently ignore errors during shutdown to prevent cascading failures
+        logger.debug(f"Connection release cleanup (non-critical): {e}")
 
 def get_pool_stats() -> dict:
     """Get connection pool statistics."""
