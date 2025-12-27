@@ -201,7 +201,9 @@ def initialize_cpp_engine():
 MAX_BUFFER = 100
 data_buffer: List[dict] = []
 simulation_queue = queue.Queue()
-MODE = "UNKNOWN" # "REPLAY" or "SIMULATION"
+MODE = "REPLAY"  # REPLAY | LIVE | SIMULATION
+ACTIVE_SOURCE = None   # e.g. "BINANCE"
+ACTIVE_SYMBOL = None   # e.g. "BTCUSDT"
 
 # --------------------------------------------------
 # DB Replay Buffer (LATENCY FIX #1)
@@ -491,6 +493,27 @@ async def csv_replay_loop():
         MODE = "SIMULATION"
         threading.Thread(target=simulation_loop, daemon=True).start()
 
+
+# to ingest live data
+async def live_snapshot_ingest(snapshot: dict):
+    """
+    Unified LIVE entrypoint.
+    This mirrors replay → analytics path exactly.
+    """
+    if MODE != "LIVE":
+        return
+
+    # Optional symbol filter
+    if ACTIVE_SYMBOL and snapshot.get("symbol") != ACTIVE_SYMBOL:
+        return
+
+    try:
+        raw_snapshot_queue.put_nowait(snapshot)
+    except queue.Full:
+        metrics.record_error("live_queue_full")
+        logger.warning("LIVE queue full, dropping snapshot")
+
+
 # --------------------------------------------------
 # Database Replay Loop (CORE LOGIC)
 # --------------------------------------------------
@@ -620,6 +643,30 @@ async def replay_loop():
                 # Ignore errors during cleanup
                 logger.debug(f"Connection cleanup during shutdown: {e}")
 
+
+async def dummy_live_loop():
+    """
+    Temporary LIVE generator to validate pipeline.
+    Replace later with gRPC ingestion.
+    """
+    await asyncio.sleep(2)  # let system boot
+
+    while True:
+        if MODE == "LIVE":
+            mid = 100 + np.random.randn() * 0.2
+            snapshot = {
+                "timestamp": datetime.utcnow().isoformat(),
+                "bids": [[mid - 0.1, 50], [mid - 0.2, 30]],
+                "asks": [[mid + 0.1, 45], [mid + 0.2, 35]],
+                "mid_price": mid,
+                "symbol": ACTIVE_SYMBOL or "BTCUSDT",
+                "source": "DUMMY"
+            }
+            await live_snapshot_ingest(snapshot)
+
+        await asyncio.sleep(0.25)
+
+
 # --------------------------------------------------
 # Startup Hook
 # --------------------------------------------------
@@ -636,6 +683,9 @@ async def startup():
     # Start loops
     asyncio.create_task(replay_loop())
     asyncio.create_task(processed_broadcast_loop())
+
+    # 🔹 TEMP LIVE generator (will be replaced by market_ingestor)
+    asyncio.create_task(dummy_live_loop())
 
     logger.info("Backend started")
 
@@ -726,6 +776,35 @@ def set_speed(value: int):
 def get_replay_state():
     """Get current replay state."""
     return controller.get_state()
+
+@app.post("/mode")
+def set_mode(payload: dict):
+    global MODE, ACTIVE_SYMBOL, ACTIVE_SOURCE
+
+    mode = payload.get("mode")
+    symbol = payload.get("symbol")
+    source = payload.get("source", "BINANCE")
+
+    if mode not in ["REPLAY", "LIVE", "SIMULATION"]:
+        return {"status": "error", "message": "Invalid mode"}
+
+    MODE = mode
+
+    if mode == "LIVE":
+        ACTIVE_SYMBOL = symbol or "BTCUSDT"
+        ACTIVE_SOURCE = source
+    else:
+        ACTIVE_SYMBOL = None
+        ACTIVE_SOURCE = None
+
+    logger.info(f"Switched MODE={MODE}, SYMBOL={ACTIVE_SYMBOL}")
+    return {
+        "status": "ok",
+        "mode": MODE,
+        "symbol": ACTIVE_SYMBOL,
+        "source": ACTIVE_SOURCE
+    }
+
 
 @app.post("/replay/goback/{seconds}")
 def go_back(seconds: float):
