@@ -22,6 +22,7 @@ export default function ControlsBar({
   isPaused = false,
   currentSpeed = 1,
   currentTimestamp = null,
+  currentMode = "REPLAY",
   showToast,
   data = [] // Add data prop for downloads
 }) {
@@ -217,38 +218,69 @@ export default function ControlsBar({
           </div>
         )}
         
-        {/* Play/Pause Button */}
-        <button 
-          onClick={handlePlayPause}
-          style={{
-            ...buttonStyle,
-            backgroundColor: isPlaying ? '#f59e0b' : '#3b82f6',
-          }}
-          title={isPlaying ? 'Pause' : (isPaused ? 'Resume' : 'Play')}
-        >
-          {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-        </button>
+        {/* Replay Controls - Only show in REPLAY mode */}
+        {currentMode === "REPLAY" && (
+          <>
+            {/* Play/Pause Button */}
+            <button 
+              onClick={handlePlayPause}
+              style={{
+                ...buttonStyle,
+                backgroundColor: isPlaying ? '#f59e0b' : '#3b82f6',
+              }}
+              title={isPlaying ? 'Pause' : (isPaused ? 'Resume' : 'Play')}
+            >
+              {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+            </button>
 
-        {/* Speed Toggle Button */}
-        <button 
-          onClick={handleSpeedToggle}
-          style={{
-            ...buttonStyle,
-            backgroundColor: speed > 1 ? '#10b981' : '#334155',
-          }}
-          title={`Speed: ${speed}x (Toggle to ${speed === 1 ? speedUpValue : 1}x)`}
-        >
-          <FastForward size={16} />
-        </button>
+            {/* Speed Toggle Button */}
+            <button 
+              onClick={handleSpeedToggle}
+              style={{
+                ...buttonStyle,
+                backgroundColor: speed > 1 ? '#10b981' : '#334155',
+              }}
+              title={`Speed: ${speed}x (Toggle to ${speed === 1 ? speedUpValue : 1}x)`}
+            >
+              <FastForward size={16} />
+            </button>
 
-        {/* Go Back Button */}
-        <button 
-          onClick={handleGoBack}
-          style={buttonStyle}
-          title={`Go back ${goBackSeconds}s`}
-        >
-          <SkipBack size={16} />
-        </button>
+            {/* Go Back Button */}
+            <button 
+              onClick={handleGoBack}
+              style={buttonStyle}
+              title={`Go back ${goBackSeconds}s`}
+            >
+              <SkipBack size={16} />
+            </button>
+          </>
+        )}
+
+        {/* LIVE Mode Indicator */}
+        {currentMode === "LIVE" && (
+          <div style={{
+            padding: '6px 12px',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            borderRadius: '6px',
+            fontSize: '12px',
+            color: '#ef4444',
+            fontWeight: '600',
+            marginRight: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            border: '1px solid rgba(239, 68, 68, 0.3)'
+          }}>
+            <div style={{
+              width: '6px',
+              height: '6px',
+              backgroundColor: '#ef4444',
+              borderRadius: '50%',
+              animation: 'pulse 2s infinite'
+            }} />
+            LIVE STREAMING
+          </div>
+        )}
 
         {/* Download Button with Dropdown */}
         <div style={{ position: 'relative' }}>
@@ -327,14 +359,16 @@ export default function ControlsBar({
           )}
         </div>
 
-        {/* Settings Button */}
-        <button 
-          onClick={() => setShowModal(true)}
-          style={buttonStyle}
-          title="Settings"
-        >
-          <Settings size={16} />
-        </button>
+        {/* Settings Button - Only show in REPLAY mode */}
+        {currentMode === "REPLAY" && (
+          <button 
+            onClick={() => setShowModal(true)}
+            style={buttonStyle}
+            title="Settings"
+          >
+            <Settings size={16} />
+          </button>
+        )}
       </div>
 
       {/* Click outside to close download menu */}
