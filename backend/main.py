@@ -132,7 +132,8 @@ class MetricsCollector:
             "python_avg_latency_ms": round(py_avg, 3),
             "cpp_samples": len(self.cpp_latency),
             "python_samples": len(self.py_latency),
-            "performance_improvement": f"{(py_avg / cpp_avg):.1f}x" if cpp_avg > 0 and py_avg > 0 else "N/A"
+            "performance_improvement": f"{(py_avg / cpp_avg):.1f}x" if cpp_avg > 0 and py_avg > 0 else "N/A",
+            "adaptive_processor": adaptive_processor.get_stats()  # Add adaptive processing stats
         }
 
 metrics = MetricsCollector()
@@ -219,6 +220,63 @@ replay_buffer = deque()
 # --------------------------------------------------
 raw_snapshot_queue = queue.Queue(maxsize=2000)
 processed_snapshot_queue = queue.Queue(maxsize=2000)
+
+class AdaptiveProcessor:
+    """Adaptive analytics processor that handles slow engines gracefully"""
+    def __init__(self):
+        self.processing_times = []
+        self.slow_processing_threshold = 100  # ms
+        self.adaptive_mode = False
+        self.skip_counter = 0
+        self.skip_ratio = 1  # Process every Nth snapshot when adaptive
+        
+    def should_process(self, snapshot):
+        """Decide if snapshot should be processed based on system load"""
+        if not self.adaptive_mode:
+            return True
+            
+        # In adaptive mode, skip some snapshots to catch up
+        self.skip_counter += 1
+        if self.skip_counter >= self.skip_ratio:
+            self.skip_counter = 0
+            return True
+        return False
+    
+    def record_processing_time(self, processing_time_ms):
+        """Record processing time and adjust adaptive mode"""
+        self.processing_times.append(processing_time_ms)
+        
+        # Keep only recent samples
+        if len(self.processing_times) > 20:
+            self.processing_times.pop(0)
+        
+        # Calculate average processing time
+        if len(self.processing_times) >= 5:
+            avg_time = sum(self.processing_times[-5:]) / 5
+            
+            # Enter adaptive mode if processing is consistently slow
+            if avg_time > self.slow_processing_threshold and not self.adaptive_mode:
+                self.adaptive_mode = True
+                self.skip_ratio = min(3, int(avg_time / 50))  # Skip more for slower processing
+                logger.warning(f"Entering adaptive processing mode - skipping {self.skip_ratio-1}/{self.skip_ratio} snapshots")
+            
+            # Exit adaptive mode if processing speeds up
+            elif avg_time < self.slow_processing_threshold * 0.7 and self.adaptive_mode:
+                self.adaptive_mode = False
+                self.skip_counter = 0
+                logger.info("Exiting adaptive processing mode - processing speed recovered")
+    
+    def get_stats(self):
+        """Get adaptive processor statistics"""
+        avg_time = sum(self.processing_times) / len(self.processing_times) if self.processing_times else 0
+        return {
+            "adaptive_mode": self.adaptive_mode,
+            "skip_ratio": self.skip_ratio if self.adaptive_mode else 1,
+            "avg_processing_time_ms": round(avg_time, 2),
+            "recent_samples": len(self.processing_times)
+        }
+
+adaptive_processor = AdaptiveProcessor()
 
 
 # --------------------------------------------------
@@ -322,7 +380,7 @@ async def processed_broadcast_loop():
 
 
 def analytics_worker():
-    """Runs heavy analytics off the event loop."""
+    """Runs heavy analytics off the event loop with adaptive processing."""
     global engine_mode, cpp_client
     logger.info(f"Analytics worker started (engine: {engine_mode})")
     
@@ -334,6 +392,10 @@ def analytics_worker():
             snapshot = raw_snapshot_queue.get()
             if snapshot is None:
                 continue
+
+            # Check if we should process this snapshot (adaptive mode)
+            if not adaptive_processor.should_process(snapshot):
+                continue  # Skip processing to catch up
 
             processing_start = time.time()
             used_engine = "python"  # Default
@@ -393,6 +455,9 @@ def analytics_worker():
                 processed = engine.process_snapshot(snapshot)
                 processing_time = (time.time() - processing_start) * 1000
                 used_engine = "python"
+
+            # Record processing time for adaptive mode
+            adaptive_processor.record_processing_time(processing_time)
 
             processed = sanitize(processed)
             processed["engine"] = used_engine  # Track which engine processed this

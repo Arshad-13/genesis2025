@@ -67,7 +67,7 @@ class BinanceDepthClient:
                                         }
                                     )
 
-                                await out_queue.put(snap)
+                                await out_queue.put_smart(snap)
                         except json.JSONDecodeError as e:
                             print(f"[BINANCE_CLIENT] JSON decode error: {e}")
                         except Exception as e:
