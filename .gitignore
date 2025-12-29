@@ -1,5 +1,6 @@
 backend/dataset/*.csv
 backend/loader/venv
+
 # Python
 __pycache__/
 *.pyc
@@ -11,6 +12,10 @@ venv/
 .venv/
 pip-log.txt
 pip-delete-this-directory.txt
+
+# Protobuf generated files (keep source .proto, ignore generated)
+*_pb2.py
+*_pb2_grpc.py
 
 pnpm-lock.yaml
 .vscode
