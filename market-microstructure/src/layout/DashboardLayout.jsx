@@ -16,7 +16,9 @@ import TradeFeed from "../components/TradeFeed";
 import VPINChart from "../components/VPINChart";
 import AdvancedAnomalyFeed from "../components/AdvancedAnomalyFeed";
 
-export default function DashboardLayout({
+import React from 'react';
+
+const DashboardLayout = React.memo(function DashboardLayout({
   data,
   latestSnapshot,
   onPlay,
@@ -641,4 +643,6 @@ export default function DashboardLayout({
       </div>
     </>
   );
-}
+});
+
+export default DashboardLayout;

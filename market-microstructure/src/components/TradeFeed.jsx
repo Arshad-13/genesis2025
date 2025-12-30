@@ -4,11 +4,17 @@ export default function TradeFeed({ data }) {
   // Extract trades from snapshot history
   const trades = useMemo(() => {
     if (!data) return [];
-    
+
     return data
       .filter(snap => snap.trade_classified && snap.trade_volume > 0)
       .map(snap => ({
         timestamp: snap.timestamp,
+        timeStr: new Date(snap.timestamp).toLocaleTimeString([], {
+          hour12: false,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        }),
         price: snap.last_trade_price,
         volume: snap.trade_volume,
         side: snap.trade_side,
@@ -36,16 +42,16 @@ export default function TradeFeed({ data }) {
         <div className="col side">Side</div>
         <div className="col spread">Eff. Spr</div>
       </div>
-      
+
       <div className="trade-list">
         {trades.map((trade, i) => (
           <div key={`${trade.timestamp}-${i}`} className={`trade-row ${trade.side}`}>
             <div className="col time">
-              {new Date(trade.timestamp).toLocaleTimeString([], { 
-                hour12: false, 
-                hour: '2-digit', 
-                minute: '2-digit', 
-                second: '2-digit' 
+              {new Date(trade.timestamp).toLocaleTimeString([], {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
               })}
             </div>
             <div className="col price">{trade.price.toFixed(2)}</div>

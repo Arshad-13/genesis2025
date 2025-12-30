@@ -154,8 +154,14 @@ class AnomalyDetectionUtils:
         if len(volumes) < 2:
             return None
         
-        avg_volume = np.mean(volumes)
-        std_volume = np.std(volumes)
+        # Optimization for small lists: avoid numpy overhead
+        if len(volumes) < 20:
+            avg_volume = sum(volumes) / len(volumes)
+            variance = sum((x - avg_volume) ** 2 for x in volumes) / len(volumes)
+            std_volume = variance ** 0.5
+        else:
+            avg_volume = np.mean(volumes)
+            std_volume = np.std(volumes)
         
         if std_volume == 0:
             return None
@@ -187,7 +193,12 @@ class AnomalyDetectionUtils:
         if not time_diffs:
             return None
         
-        avg_interval = np.mean(time_diffs)
+        # Optimization: use pure Python for mean of small lists
+        if len(time_diffs) < 20:
+            avg_interval = sum(time_diffs) / len(time_diffs)
+        else:
+            avg_interval = np.mean(time_diffs)
+
         if avg_interval < threshold_sec:
             return {
                 'trade_count': len(trades),

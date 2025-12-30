@@ -26,7 +26,8 @@ export default function Dashboard() {
   const [toast, setToast] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const wsRef = useRef(null);
-  
+  const bufferRef = useRef([]);
+
   // Mode switching state
   const [currentMode, setCurrentMode] = useState("REPLAY"); // "LIVE" or "REPLAY"
   const [selectedSymbol, setSelectedSymbol] = useState("BTCUSDT");
@@ -65,17 +66,17 @@ export default function Dashboard() {
       }
 
       const result = await response.json();
-      
+
       if (result.status === 'success') {
         setCurrentMode(mode);
         if (mode === "LIVE" && symbol) {
           setSelectedSymbol(symbol);
         }
-        
+
         // Clear existing data when switching modes
         setData([]);
         setLatestSnapshot(null);
-        
+
         showToast(`Switched to ${mode} mode${mode === "LIVE" ? ` (${symbol})` : ''}`, 'success');
         return true;
       } else {
@@ -145,15 +146,9 @@ export default function Dashboard() {
             return;
           }
 
-          // Live replay update
-          const snapshot = message;
-          setLatestSnapshot(snapshot);
+          // Live replay update: Buffer it instead of updating state immediately
+          bufferRef.current.push(message);
 
-          setData((prev) => {
-            const updated = [...prev, snapshot];
-            if (updated.length > MAX_BUFFER) updated.shift();
-            return updated;
-          });
         } catch (err) {
           console.error("Error parsing WebSocket message:", err);
         }
@@ -161,7 +156,7 @@ export default function Dashboard() {
 
       ws.onclose = (event) => {
         console.log("❌ Disconnected from session", event.code, event.reason);
-        
+
         if (!intentionallyClosed && reconnectAttempts < maxReconnectAttempts) {
           reconnectAttempts++;
           console.log(`🔄 Reconnecting (attempt ${reconnectAttempts}/${maxReconnectAttempts})...`);
@@ -179,7 +174,30 @@ export default function Dashboard() {
 
     connect();
 
+    // Throttled update loop
+    const flushBuffer = () => {
+      if (bufferRef.current.length > 0) {
+        const newItems = [...bufferRef.current];
+        bufferRef.current = []; // Clear buffer
+
+        // Update latest snapshot
+        setLatestSnapshot(newItems[newItems.length - 1]);
+
+        // Batch update data
+        setData((prev) => {
+          let updated = [...prev, ...newItems];
+          if (updated.length > MAX_BUFFER) {
+            updated = updated.slice(updated.length - MAX_BUFFER);
+          }
+          return updated;
+        });
+      }
+    };
+
+    const intervalId = setInterval(flushBuffer, 100); // 100ms throttle
+
     return () => {
+      clearInterval(intervalId);
       intentionallyClosed = true;
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
@@ -191,7 +209,7 @@ export default function Dashboard() {
   }, [sessionId]);
 
 
- // -------------------------------
+  // -------------------------------
   // Replay Controls with Session ID
   // -------------------------------
   const controlReplay = async (path, newState) => {
@@ -208,18 +226,18 @@ export default function Dashboard() {
           "Authorization": `Bearer ${localStorage.getItem('auth_token')}`
         }
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
-      
+
       const result = await response.json();
-      
+
       if (result.status === 'error') {
         showToast(result.message || 'Control failed', 'error');
         return false;
       }
-      
+
       if (newState) setReplayState(newState);
       return true;
     } catch (err) {
@@ -256,7 +274,7 @@ export default function Dashboard() {
         }
       });
       const result = await response.json();
-      
+
       if (result.status === 'success') {
         setData([]);
         setLatestSnapshot(null);
@@ -327,7 +345,7 @@ export default function Dashboard() {
             <Play size={12} />
             REPLAY
           </button>
-          
+
           <button
             onClick={handleLiveMode}
             disabled={isModeLoading}

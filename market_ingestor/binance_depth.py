@@ -2,8 +2,9 @@ import asyncio
 import json
 import websockets
 from datetime import datetime
+import heapq
 
-DEBUG_LIVE_SNAPSHOTS = True   # flip to False to disable
+DEBUG_LIVE_SNAPSHOTS = False   # flip to False to disable
 
 class BinanceDepthClient:
     def __init__(self, symbol: str, depth: int = 20):
@@ -24,8 +25,15 @@ class BinanceDepthClient:
                 side_dict[price] = qty
 
     def _snapshot(self):
-        bids = sorted(self.bids.items(), reverse=True)[:self.depth]
-        asks = sorted(self.asks.items())[:self.depth]
+        # Optimization: Use nlargest/nsmallest for O(N log K) instead of O(N log N) sorting
+        if not self.bids or not self.asks:
+            return None
+
+        # Bids: Highest prices first
+        bids = heapq.nlargest(self.depth, self.bids.items(), key=lambda x: x[0])
+        
+        # Asks: Lowest prices first
+        asks = heapq.nsmallest(self.depth, self.asks.items(), key=lambda x: x[0])
 
         if not bids or not asks:
             return None

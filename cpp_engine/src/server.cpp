@@ -24,7 +24,8 @@ public:
                            const Snapshot* request,
                            ProcessedSnapshot* response) override {
 
-        // Debug output
+        // Debug output (commented out for performance)
+        /*
         std::cout << "=== C++ Engine Processing ===" << std::endl;
         std::cout << "Bids: " << request->bids_size() << ", Asks: " << request->asks_size() << std::endl;
         
@@ -32,16 +33,19 @@ public:
             std::cout << "L1: Bid=" << request->bids(0).price() << "@" << request->bids(0).volume() 
                       << ", Ask=" << request->asks(0).price() << "@" << request->asks(0).volume() << std::endl;
         }
+        */
 
         // Use real analytics engine
         *response = engine.processSnapshot(*request);
         
         // Print individual fields instead of trying to print the entire message
+        /*
         std::cout << "Results: Spread=" << response->spread() 
                   << ", OFI=" << response->ofi() 
                   << ", OBI=" << response->obi() 
                   << ", Microprice=" << response->microprice() << std::endl;
         std::cout << "=========================" << std::endl;
+        */
         
         return Status::OK;
     }

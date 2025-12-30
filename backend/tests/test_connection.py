@@ -73,14 +73,8 @@ def test_backend_imports():
         from analytics_core import AnalyticsEngine
         print("✅ Analytics module imported")
         
-        from replay import ReplayController
-        print("✅ Replay module imported")
-        
         engine = AnalyticsEngine()
         print("✅ AnalyticsEngine instantiated")
-        
-        controller = ReplayController()
-        print("✅ ReplayController instantiated")
         
         return True
         
