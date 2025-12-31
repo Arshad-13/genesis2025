@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import Home from './pages/Home'; // Assuming you have a Home page
+import ModelTest from './pages/ModelTest';
 
 function App() {
   return (
@@ -13,24 +14,33 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/auth" element={<Auth />} />
-          
+
           {/* Protected Routes */}
-          <Route 
-            path="/" 
+          <Route
+            path="/"
             element={
               <ProtectedRoute>
                 <Home />
               </ProtectedRoute>
-            } 
+            }
           />
-          
-          <Route 
-            path="/dashboard" 
+
+          <Route
+            path="/dashboard"
             element={
               <ProtectedRoute>
                 <Dashboard />
               </ProtectedRoute>
-            } 
+            }
+          />
+
+          <Route
+            path="/model-test"
+            element={
+              <ProtectedRoute>
+                <ModelTest />
+              </ProtectedRoute>
+            }
           />
 
           {/* Fallback Route */}

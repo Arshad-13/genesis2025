@@ -163,8 +163,14 @@ app.include_router(auth.router)
 # --------------------------------------------------
 engine = AnalyticsEngine()
 cpp_client = None  # Lazy initialization
-cpp_client = None  # Lazy initialization
 session_manager = SessionManager()
+
+# Model Inference
+from inference_service import ModelInference
+from strategy_service import StrategyEngine
+
+inference_engine = ModelInference()
+strategy_engine = StrategyEngine()
 
 # Engine state lock to prevent race conditions
 engine_state_lock = threading.Lock()
@@ -400,11 +406,16 @@ def session_analytics_worker(session: UserSession):
     consecutive_cpp_failures = 0
     MAX_CPP_FAILURES = 5
 
+    MAX_CPP_FAILURES = 5
+
     while session.is_active():
         try:
             snapshot = session.raw_snapshot_queue.get(timeout=1.0)
             if snapshot is None:
                 continue
+            
+            # print(f"DEBUG: Analytics Worker got snapshot: {snapshot.get('mid_price')}")
+
 
             # Process using unified logic
             processed, processing_time, used_engine, consecutive_cpp_failures = process_snapshot_wrapper(
@@ -413,6 +424,17 @@ def session_analytics_worker(session: UserSession):
 
             processed = sanitize(processed)
             processed["engine"] = used_engine
+            
+            # === MODEL PREDICTION ===
+            prediction = inference_engine.predict(session.session_id, snapshot)
+            if prediction:
+                processed['prediction'] = prediction
+                
+                # === STRATEGY ENGINE ===
+                # Only run strategy if we have a valid prediction
+                strategy_update = strategy_engine.process_signal(prediction, snapshot)
+                if strategy_update:
+                    processed['strategy'] = strategy_update
             
             # Also update global buffer for backward compatibility
             data_buffer.append(processed)
@@ -532,6 +554,102 @@ async def session_broadcast_loop(session: UserSession):
         except Exception as e:
             logger.error(f"Session {session.session_id} broadcast error: {e}")
             await asyncio.sleep(0.05)
+
+# --------------------------------------------------
+# CSV Replay Loop (Ad-Hoc for ModelTest)
+# --------------------------------------------------
+async def session_csv_replay_loop(session: UserSession, csv_path: str):
+    """Streams data from CSV for a specific session."""
+    print(f"DEBUG: Starting CSV replay for session {session.session_id} from {csv_path}")
+    logger.info(f"Starting CSV replay for session {session.session_id} from {csv_path}")
+    
+    try:
+        # Check if file exists
+        if not os.path.exists(csv_path):
+             print(f"DEBUG: ERROR - File not found: {csv_path}")
+             logger.error(f"File not found: {csv_path}")
+             return
+
+        # Use pandas for easy chunk reading
+        chunk_size = 1000
+        print(f"DEBUG: Reading CSV chunks...")
+        for chunk in pd.read_csv(csv_path, chunksize=chunk_size):
+            print(f"DEBUG: Processing chunk of size {len(chunk)}")
+            if not session.is_active():
+                print("DEBUG: Session not active, breaking")
+                break
+                
+            # Convert chunk to dict records
+            records = chunk.to_dict('records')
+            
+            for row in records:
+                if not session.is_active():
+                    break
+                    
+                # Map CSV columns to snapshot format
+                # Assuming l2_clean.csv format: 
+                # [exchange_ts, receive_ts, bid1, vol1, ..., mid_price]
+                # We need to construct the snapshot carefully.
+                # Actually, data_loader.py logic handles this mapping usually.
+                # Let's align with what DataHandler does or simple mapping.
+                
+                # Simple mapping for visualization:
+                # 40 columns are features. 
+                # 0-20: Bids (Price, Vol) x 10
+                # 20-40: Asks (Price, Vol) x 10
+                
+                # Check columns to decide mapping
+                # If unnamed columns, we might need to assume indices.
+                # Let's assume standard LOB format.
+                
+                # Construct snapshot
+                snapshot = {
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "symbol": "BTCUSDT",
+                    "bids": [],
+                    "asks": [],
+                    "mid_price": 0.0
+                }
+                
+                # Reconstruct Bids/Asks from columns
+                # Col 0-1: Bid1 Price, Vol
+                # ...
+                # Col 18-19: Bid10 Price, Vol
+                # Col 20-21: Ask1 Price, Vol
+                # ...
+                
+                # Use list(row.values()) to get ordered values
+                vals = list(row.values())
+                # Skip index if present (usually first col if read_csv keeps index)
+                start_idx = 1 if "Unnamed: 0" in row else 0
+                
+                # Features usually 1-40.
+                features = vals[start_idx:start_idx+40]
+                
+                current_bids = []
+                current_asks = []
+                
+                for i in range(0, 20, 2):
+                    current_bids.append([float(features[i]), float(features[i+1])])
+                
+                for i in range(20, 40, 2):
+                    current_asks.append([float(features[i]), float(features[i+1])])
+                    
+                snapshot["bids"] = current_bids
+                snapshot["asks"] = current_asks
+                # Calc mid price from top levels
+                if current_bids and current_asks:
+                    snapshot["mid_price"] = (current_bids[0][0] + current_asks[0][0]) / 2
+                
+                try:
+                    session.raw_snapshot_queue.put_nowait(snapshot)
+                except queue.Full:
+                    await asyncio.sleep(0.01)
+                    
+                await asyncio.sleep(0.1) # Throttled playback speed
+                
+    except Exception as e:
+        logger.error(f"CSV Replay Error: {e}")
 
 
 # --------------------------------------------------
@@ -670,6 +788,33 @@ async def live_grpc_loop():
             await asyncio.sleep(5)  # Wait before retrying
 
 
+@app.post("/strategy/start")
+async def start_strategy():
+    """Start the paper trading strategy"""
+    strategy_engine.start()
+    return {"status": "started", "is_active": strategy_engine.is_active}
+
+@app.post("/strategy/stop")
+async def stop_strategy():
+    """Stop the paper trading strategy"""
+    strategy_engine.stop()
+    return {"status": "stopped", "is_active": strategy_engine.is_active}
+
+@app.post("/strategy/reset")
+async def reset_strategy():
+    """Reset all PnL and trade history"""
+    strategy_engine.reset()
+    return {
+        "status": "reset",
+        "is_active": strategy_engine.is_active,
+        "pnl": {
+            "realized": strategy_engine.pnl,
+            "unrealized": 0.0,
+            "total": strategy_engine.pnl,
+            "position": strategy_engine.position
+        }
+    }
+
 # --------------------------------------------------
 # CSV Replay Loop (FALLBACK 2)
 # --------------------------------------------------
@@ -746,7 +891,14 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
         
         # Start session-specific tasks
         threading.Thread(target=session_analytics_worker, args=(session,), daemon=True).start()
-        asyncio.create_task(session_replay_loop(session))
+        
+        # Special case for ModelTest: Use CSV Replay
+        if "model-test" in session_id:
+            logger.info(f"Session {session_id} identified as ModelTest. Using CSV Replay.")
+            asyncio.create_task(session_csv_replay_loop(session, "../l2_clean.csv"))
+        else:
+            asyncio.create_task(session_replay_loop(session))
+            
         asyncio.create_task(session_broadcast_loop(session))
     
     await manager.connect(websocket, session_id)
