@@ -15,14 +15,11 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def get_password_hash(password: str) -> str:
-    # SHA-256 → 32 bytes (SAFE for bcrypt)
-    sha = hashlib.sha256(password.encode("utf-8")).digest()
-    return pwd_context.hash(sha)
+def get_password_hash(password: str):
+    return pwd_context.hash(password)
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    sha = hashlib.sha256(plain_password.encode("utf-8")).digest()
-    return pwd_context.verify(sha, hashed_password)
+def verify_password(plain_password: str, hashed_password: str):
+    return pwd_context.verify(plain_password, hashed_password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Create JWT access token"""
