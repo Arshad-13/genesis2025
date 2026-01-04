@@ -166,10 +166,10 @@ session_manager = SessionManager()
 
 # Model Inference
 from inference_service import ModelInference
-from strategy_service import StrategyEngine
+from session_strategy import SessionStrategyManager
 
 inference_engine = ModelInference()
-strategy_engine = StrategyEngine()
+strategy_manager = SessionStrategyManager()
 
 # Engine state lock to prevent race conditions
 engine_state_lock = threading.Lock()
@@ -430,8 +430,9 @@ def session_analytics_worker(session: UserSession):
                 processed['prediction'] = prediction
                 
                 # === STRATEGY ENGINE ===
-                # Only run strategy if we have a valid prediction
-                strategy_update = strategy_engine.process_signal(prediction, snapshot)
+                # Get strategy for this session
+                strategy = strategy_manager.get_or_create(session.session_id)
+                strategy_update = strategy.process_signal(prediction, snapshot)
                 if strategy_update:
                     processed['strategy'] = strategy_update
             
@@ -511,9 +512,16 @@ async def session_replay_loop(session: UserSession):
                 
                 # Process snapshot
                 try:
+                    # Backpressure handling: check queue size before pushing
+                    if session.raw_snapshot_queue.qsize() > 1500:  # 75% capacity threshold
+                        logger.warning(f"Session {session.session_id}: High backpressure, skipping snapshot")
+                        await asyncio.sleep(0.5)  # Slow down replay
+                        continue
+                    
                     session.raw_snapshot_queue.put_nowait(snapshot)
                 except queue.Full:
-                    logger.warning(f"Session {session.session_id}: Queue full")
+                    logger.warning(f"Session {session.session_id}: Queue full, dropping snapshot")
+                    consecutive_errors += 1
                 
                 # Replay speed
                 await asyncio.sleep(0.25 / session.speed)
@@ -787,30 +795,34 @@ async def live_grpc_loop():
             await asyncio.sleep(5)  # Wait before retrying
 
 
-@app.post("/strategy/start")
-async def start_strategy():
-    """Start the paper trading strategy"""
-    strategy_engine.start()
-    return {"status": "started", "is_active": strategy_engine.is_active}
+@app.post("/strategy/{session_id}/start")
+async def start_strategy(session_id: str):
+    """Start the paper trading strategy for a session"""
+    strategy = strategy_manager.get_or_create(session_id)
+    strategy.start()
+    return {"status": "started", "session_id": session_id, "is_active": strategy.is_active}
 
-@app.post("/strategy/stop")
-async def stop_strategy():
-    """Stop the paper trading strategy"""
-    strategy_engine.stop()
-    return {"status": "stopped", "is_active": strategy_engine.is_active}
+@app.post("/strategy/{session_id}/stop")
+async def stop_strategy(session_id: str):
+    """Stop the paper trading strategy for a session"""
+    strategy = strategy_manager.get_or_create(session_id)
+    strategy.stop()
+    return {"status": "stopped", "session_id": session_id, "is_active": strategy.is_active}
 
-@app.post("/strategy/reset")
-async def reset_strategy():
-    """Reset all PnL and trade history"""
-    strategy_engine.reset()
+@app.post("/strategy/{session_id}/reset")
+async def reset_strategy(session_id: str):
+    """Reset the paper trading strategy for a session"""
+    strategy = strategy_manager.get_or_create(session_id)
+    strategy.reset()
     return {
         "status": "reset",
-        "is_active": strategy_engine.is_active,
+        "session_id": session_id,
+        "is_active": strategy.is_active,
         "pnl": {
-            "realized": strategy_engine.pnl,
+            "realized": strategy.pnl,
             "unrealized": 0.0,
-            "total": strategy_engine.pnl,
-            "position": strategy_engine.position
+            "total": strategy.pnl,
+            "position": strategy.position
         }
     }
 
@@ -866,11 +878,24 @@ async def startup():
 
 @app.on_event("shutdown")
 async def shutdown():
-    """Gracefully close database connections on shutdown."""
+    """Gracefully close database connections and cleanup resources on shutdown."""
     logger.info("Shutting down...")
     try:
+        # Close database connections
         await asyncio.wait_for(close_all_connections(), timeout=3.0)
         logger.info("Database connections closed")
+        
+        # Cleanup model resources
+        logger.info("Cleaning up model resources...")
+        if hasattr(inference_engine, 'model') and inference_engine.model is not None:
+            inference_engine.session_buffers.clear()
+            if hasattr(inference_engine.model, 'cpu'):
+                inference_engine.model.cpu()  # Move model off GPU
+        
+        # Cleanup strategy resources
+        strategy_manager.strategies.clear()
+        logger.info("Resources cleaned up successfully")
+        
     except asyncio.TimeoutError:
         logger.warning("Database close timed out")
     except Exception as e:
@@ -995,8 +1020,16 @@ async def get_all_sessions():
 
 @app.delete("/sessions/{session_id}")
 async def delete_session(session_id: str):
-    """Delete a specific session."""
+    """Delete a specific session and cleanup resources."""
+    # Cleanup session
     await session_manager.delete_session(session_id)
+    
+    # Cleanup model buffers
+    inference_engine.cleanup_session(session_id)
+    
+    # Cleanup strategy
+    strategy_manager.cleanup_session(session_id)
+    
     return {"status": "success", "message": f"Session {session_id} deleted"}
 
 

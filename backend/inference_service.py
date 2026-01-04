@@ -29,6 +29,10 @@ class ModelInference:
         # Buffer storage: session_id -> deque (max 100)
         self.session_buffers = {}
         
+        # Rate limiting for inference
+        self.last_inference_time = {}
+        self.min_inference_interval = 0.1  # 100ms between predictions (10 predictions/sec max)
+        
         self.load_resources(model_path, scaler_path)
 
     def load_resources(self, model_path, scaler_path):
@@ -82,6 +86,15 @@ class ModelInference:
         """
         if self.model is None:
             return None
+        
+        # Rate limiting check
+        import time
+        current_time = time.time()
+        last_time = self.last_inference_time.get(session_id, 0)
+        
+        if current_time - last_time < self.min_inference_interval:
+            # Too soon, skip this prediction
+            return None
             
         if session_id not in self.session_buffers:
             self.session_buffers[session_id] = deque(maxlen=100)
@@ -108,10 +121,31 @@ class ModelInference:
         with torch.no_grad():
             output = self.model(input_tensor)
             probs = torch.softmax(output, dim=1).cpu().numpy()[0]
+        
+        # Update last inference time
+        self.last_inference_time[session_id] = current_time
             
         # Output is [Down, Neutral, Up]
         return {
             "down": float(probs[0]),
             "neutral": float(probs[1]),
             "up": float(probs[2])
+        }
+    
+    def cleanup_session(self, session_id: str):
+        """Clean up session buffer when session ends."""
+        if session_id in self.session_buffers:
+            del self.session_buffers[session_id]
+            logger.info(f"Cleaned up model buffer for session {session_id}")
+        
+        if session_id in self.last_inference_time:
+            del self.last_inference_time[session_id]
+    
+    def get_stats(self) -> dict:
+        """Get inference service statistics."""
+        return {
+            "active_sessions": len(self.session_buffers),
+            "device": str(self.device),
+            "model_loaded": self.model is not None,
+            "buffer_sizes": {sid: len(buf) for sid, buf in self.session_buffers.items()}
         }
