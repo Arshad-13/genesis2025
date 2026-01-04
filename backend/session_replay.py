@@ -14,13 +14,13 @@ class UserSession:
     def __init__(self, session_id: str, user_id: Optional[int] = None):
         self.session_id = session_id
         self.user_id = user_id
-        self.state = "PLAYING"  # STOPPED, PLAYING, PAUSED
+        self.state = "STOPPED"  # STOPPED, PLAYING, PAUSED
         self.speed = 1
         self.cursor_ts = None
         self.data_buffer = deque(maxlen=100)
         self.replay_buffer = deque()
-        self.created_at = datetime.utcnow()
-        self.last_activity = datetime.utcnow()
+        self.created_at = datetime.now()
+        self.last_activity = datetime.now()
         
         # Session-specific queues
         self.raw_snapshot_queue = queue.Queue(maxsize=2000)
@@ -29,21 +29,21 @@ class UserSession:
     def start(self):
         """Start replay."""
         self.state = "PLAYING"
-        self.last_activity = datetime.utcnow()
+        self.last_activity = datetime.now()
         logger.info(f"Session {self.session_id}: Started")
     
     def pause(self):
         """Pause replay."""
         if self.state == "PLAYING":
             self.state = "PAUSED"
-            self.last_activity = datetime.utcnow()
+            self.last_activity = datetime.now()
             logger.info(f"Session {self.session_id}: Paused")
     
     def resume(self):
         """Resume replay."""
         if self.state == "PAUSED":
             self.state = "PLAYING"
-            self.last_activity = datetime.utcnow()
+            self.last_activity = datetime.now()
             logger.info(f"Session {self.session_id}: Resumed")
     
     def stop(self):
@@ -52,13 +52,13 @@ class UserSession:
         self.cursor_ts = None
         self.data_buffer.clear()
         self.replay_buffer.clear()
-        self.last_activity = datetime.utcnow()
+        self.last_activity = datetime.now()
         logger.info(f"Session {self.session_id}: Stopped")
     
     def set_speed(self, speed: int):
         """Set replay speed."""
         self.speed = max(1, min(speed, 10))
-        self.last_activity = datetime.utcnow()
+        self.last_activity = datetime.now()
         logger.info(f"Session {self.session_id}: Speed set to {self.speed}x")
     
     def go_back(self, seconds: float) -> bool:
@@ -68,7 +68,7 @@ class UserSession:
             self.cursor_ts = self.cursor_ts - timedelta(seconds=seconds)
             self.replay_buffer.clear()
             self.data_buffer.clear()
-            self.last_activity = datetime.utcnow()
+            self.last_activity = datetime.now()
             logger.info(f"Session {self.session_id}: Rewound by {seconds}s")
             return True
         return False
@@ -89,7 +89,7 @@ class UserSession:
     def is_active(self) -> bool:
         """Check if session is still active (activity in last 30 minutes)."""
         from datetime import timedelta
-        return (datetime.utcnow() - self.last_activity) < timedelta(minutes=30)
+        return (datetime.now() - self.last_activity) < timedelta(minutes=30)
 
 
 class SessionManager:
