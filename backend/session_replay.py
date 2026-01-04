@@ -22,6 +22,9 @@ class UserSession:
         self.created_at = datetime.now()
         self.last_activity = datetime.now()
         
+        # Session lifecycle flag for async workers
+        self._running = True
+        
         # Session-specific queues
         self.raw_snapshot_queue = queue.Queue(maxsize=2000)
         self.processed_snapshot_queue = queue.Queue(maxsize=2000)
@@ -55,6 +58,12 @@ class UserSession:
         self.last_activity = datetime.now()
         logger.info(f"Session {self.session_id}: Stopped")
     
+    def shutdown(self):
+        """Shutdown session and stop all workers."""
+        self._running = False
+        self.stop()
+        logger.info(f"Session {self.session_id}: Shutdown initiated")
+    
     def set_speed(self, speed: int):
         """Set replay speed."""
         self.speed = max(1, min(speed, 10))
@@ -87,7 +96,9 @@ class UserSession:
         }
     
     def is_active(self) -> bool:
-        """Check if session is still active (activity in last 30 minutes)."""
+        """Check if session is still active (has running flag and recent activity)."""
+        if not self._running:
+            return False
         from datetime import timedelta
         return (datetime.now() - self.last_activity) < timedelta(minutes=30)
 
@@ -120,7 +131,7 @@ class SessionManager:
         async with self._lock:
             if session_id in self.sessions:
                 session = self.sessions[session_id]
-                session.stop()
+                session.shutdown()  # Properly shutdown workers
                 del self.sessions[session_id]
                 logger.info(f"Deleted session {session_id}")
     
@@ -134,7 +145,7 @@ class SessionManager:
             
             for sid in inactive:
                 logger.info(f"Cleaning up inactive session {sid}")
-                self.sessions[sid].stop()
+                self.sessions[sid].shutdown()
                 del self.sessions[sid]
             
             if inactive:

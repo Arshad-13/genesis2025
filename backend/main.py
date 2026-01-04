@@ -410,12 +410,13 @@ async def session_analytics_worker_async(session: UserSession):
 
     while session.is_active():
         try:
-            # Non-blocking queue check with asyncio
-            if session.raw_snapshot_queue.empty():
+            # Non-blocking queue check
+            try:
+                snapshot = session.raw_snapshot_queue.get_nowait()
+            except queue.Empty:
                 await asyncio.sleep(0.01)  # Yield control, 10ms sleep
                 continue
                 
-            snapshot = session.raw_snapshot_queue.get_nowait()
             if snapshot is None:
                 continue
 
@@ -878,6 +879,29 @@ async def reset_strategy(session_id: str):
             "position": strategy.position
         }
     }
+
+# Backward compatibility endpoints (no session_id in path)
+@app.post("/strategy/start")
+async def start_strategy_default():
+    """Start strategy for default session (backward compatibility)"""
+    # Use first active session or create 'default' session
+    sessions = session_manager.sessions
+    session_id = next(iter(sessions.keys())) if sessions else "default"
+    return await start_strategy(session_id)
+
+@app.post("/strategy/stop")
+async def stop_strategy_default():
+    """Stop strategy for default session (backward compatibility)"""
+    sessions = session_manager.sessions
+    session_id = next(iter(sessions.keys())) if sessions else "default"
+    return await stop_strategy(session_id)
+
+@app.post("/strategy/reset")
+async def reset_strategy_default():
+    """Reset strategy for default session (backward compatibility)"""
+    sessions = session_manager.sessions
+    session_id = next(iter(sessions.keys())) if sessions else "default"
+    return await reset_strategy(session_id)
 
 # --------------------------------------------------
 # CSV Replay Loop (FALLBACK 2)

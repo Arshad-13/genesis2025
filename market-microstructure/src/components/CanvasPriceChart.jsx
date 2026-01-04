@@ -5,7 +5,6 @@ export default function CanvasPriceChart({
   width = "100%",
   height = 250,
   scale = 1,
-  markers = [], // Array of { timestamp, price, type: 'buy'|'sell'|'exit', label }
 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -164,15 +163,15 @@ export default function CanvasPriceChart({
         const x = getX(i);
         const y = getY(d.last_trade_price || d.mid_price);
         // Scale radius by volume
-        const radius = Math.min(Math.max(Math.log10(d.trade_volume || 10), 2), 6);
-
+        const radius = Math.min(Math.max(Math.log10(d.trade_volume || 10), 2), 6); 
+        
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, 2 * Math.PI);
-
+        
         let color = '#fbbf24'; // Yellow default
         if (d.trade_side === 'buy') color = '#4ade80';
         else if (d.trade_side === 'sell') color = '#f87171';
-
+        
         ctx.fillStyle = color;
         ctx.fill();
         ctx.strokeStyle = '#0f172a';
@@ -180,44 +179,6 @@ export default function CanvasPriceChart({
         ctx.stroke();
       }
     });
-
-    // --- Draw Strategy Markers (Triangles) ---
-    if (markers && markers.length > 0) {
-      markers.forEach(marker => {
-        // Find closest data point to marker timestamp
-        const dataIndex = data.findIndex(d => Math.abs(new Date(d.timestamp) - new Date(marker.timestamp)) < 200);
-
-        if (dataIndex >= 0) {
-          const x = getX(dataIndex);
-          const y = getY(marker.price);
-          const size = 6;
-
-          ctx.beginPath();
-          if (marker.type === 'ENTRY') {
-            // Up or Down Triangle based on side
-            if (marker.side === 'BUY') {
-              ctx.fillStyle = '#22c55e'; // Green
-              ctx.moveTo(x, y + size);
-              ctx.lineTo(x - size, y + size * 2.5);
-              ctx.lineTo(x + size, y + size * 2.5);
-            } else {
-              ctx.fillStyle = '#ef4444'; // Red
-              ctx.moveTo(x, y - size);
-              ctx.lineTo(x - size, y - size * 2.5);
-              ctx.lineTo(x + size, y - size * 2.5);
-            }
-          } else {
-            // Exit Circle
-            ctx.fillStyle = '#94a3b8'; // Slate
-            ctx.arc(x, y, 4, 0, Math.PI * 2);
-          }
-          ctx.fill();
-          ctx.strokeStyle = '#fff';
-          ctx.lineWidth = 1;
-          ctx.stroke();
-        }
-      });
-    }
 
     // --- Draw Crosshair & Tooltip ---
     if (mousePos) {
@@ -293,8 +254,8 @@ export default function CanvasPriceChart({
   return (
     <div ref={containerRef} style={{ position: 'relative', overflow: 'hidden', width: '100%' }}>
       <h4 style={{ margin: '0 0 12px 0', fontSize: '0.875rem', fontWeight: 600, color: '#e5e7eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Price Action</h4>
-      <canvas
-        ref={canvasRef}
+      <canvas 
+        ref={canvasRef} 
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         style={{ display: 'block', cursor: 'crosshair', width: '100%' }}

@@ -57,27 +57,60 @@ const ModelTest = () => {
     const [stats, setStats] = useState({ unrealized: 0, total: 0, position: 0 });
     const [history, setHistory] = useState({ trades: [], prices: [] });
     const bufferRef = useRef([]);
+    const sessionIdRef = useRef("model-test-session-" + Math.random().toString(36).substr(2, 9));
+    const wsRef = useRef(null);
 
     // Connection & Data Logic
     useEffect(() => {
         const BACKEND_HTTP = import.meta.env.VITE_BACKEND_HTTP || "http://localhost:8000";
         const BACKEND_WS = import.meta.env.VITE_BACKEND_WS || `${BACKEND_HTTP.replace(/^http/, "ws")}/ws`;
-        const sessionId = "model-test-session-" + Math.random().toString(36).substr(2, 9);
-        const ws = new WebSocket(`${BACKEND_WS}/${sessionId}`);
+        const sessionId = sessionIdRef.current;
+        
+        let interval = null;
+        let isMounted = true;
+        
+        console.log('[ModelTest] Initializing WebSocket connection to:', `${BACKEND_WS}/${sessionId}`);
 
-        ws.onopen = () => {
-            setStatus(s => ({ ...s, connected: true }));
-            fetch(`${BACKEND_HTTP}/replay/${sessionId}/start`, { method: 'POST' });
+        const connectWebSocket = () => {
+            const ws = new WebSocket(`${BACKEND_WS}/${sessionId}`);
+            wsRef.current = ws;
+
+            ws.onopen = () => {
+                console.log('[ModelTest] WebSocket connected');
+                if (!isMounted) {
+                    console.log('[ModelTest] Component unmounted, closing WebSocket');
+                    ws.close();
+                    return;
+                }
+                setStatus(s => ({ ...s, connected: true }));
+                fetch(`${BACKEND_HTTP}/replay/${sessionId}/start`, { method: 'POST' })
+                    .then(() => console.log('[ModelTest] Replay started'))
+                    .catch(err => console.error('[ModelTest] Failed to start replay:', err));
+            };
+
+            ws.onmessage = (e) => {
+                if (!isMounted) return;
+                const msg = JSON.parse(e.data);
+                console.log('[ModelTest] Received message type:', msg.type);
+                if (msg.type !== 'history') bufferRef.current.push(msg);
+            };
+
+            ws.onclose = (event) => {
+                console.log('[ModelTest] WebSocket closed:', event.code, event.reason);
+                if (!isMounted) return;
+                setStatus(s => ({ ...s, connected: false }));
+            };
+            
+            ws.onerror = (err) => {
+                console.error('[ModelTest] WebSocket error:', err);
+            };
+
+            return ws;
         };
 
-        ws.onmessage = (e) => {
-            const msg = JSON.parse(e.data);
-            if (msg.type !== 'history') bufferRef.current.push(msg);
-        };
+        connectWebSocket();
 
-        ws.onclose = () => setStatus(s => ({ ...s, connected: false }));
-
-        const interval = setInterval(() => {
+        interval = setInterval(() => {
             if (bufferRef.current.length > 0) {
                 const msgs = [...bufferRef.current];
                 const latest = msgs[msgs.length - 1];
@@ -104,7 +137,18 @@ const ModelTest = () => {
             }
         }, 50); // High refresh rate 50ms
 
-        return () => { clearInterval(interval); ws.close(); };
+        return () => {
+            console.log('[ModelTest] Cleanup: unmounting component');
+            isMounted = false;
+            if (interval) {
+                clearInterval(interval);
+                console.log('[ModelTest] Cleanup: cleared interval');
+            }
+            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                console.log('[ModelTest] Cleanup: closing WebSocket');
+                wsRef.current.close();
+            }
+        };
     }, []);
 
     const toggleEngine = async () => {
@@ -199,12 +243,12 @@ const ModelTest = () => {
                         {/* Metrics Block */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.5rem', flexShrink: 0 }}>
                             <div className="grid grid-cols-2 gap-2">
-                                <MetricCard label="Unrealized PnL" value={stats.unrealized.toFixed(2)} color="text-blue-400" icon={TrendingUp} />
-                                <MetricCard label="Total PnL" value={stats.total.toFixed(2)} color="text-green-400" icon={DollarSign} />
+                                <MetricCard label="Unrealized PnL" value={(stats.unrealized || 0).toFixed(2)} color="text-blue-400" icon={TrendingUp} />
+                                <MetricCard label="Total PnL" value={(stats.total || 0).toFixed(2)} color="text-green-400" icon={DollarSign} />
                             </div>
                             <div className="grid grid-cols-2 gap-2">
-                                <MetricCard label="Position" value={stats.position} color="text-purple-400" icon={Activity} />
-                                <MetricCard label="Mid Price" value={data.mid_price.toFixed(2)} subValue={`Spr: ${(data.asks[0]?.[0] - data.bids[0]?.[0] || 0).toFixed(2)}`} color="text-orange-400" icon={Server} />
+                                <MetricCard label="Position" value={stats.position || 0} color="text-purple-400" icon={Activity} />
+                                <MetricCard label="Mid Price" value={(data.mid_price || 0).toFixed(2)} subValue={`Spr: ${((data.asks?.[0]?.[0] || 0) - (data.bids?.[0]?.[0] || 0)).toFixed(2)}`} color="text-orange-400" icon={Server} />
                             </div>
                         </div>
 
@@ -217,16 +261,16 @@ const ModelTest = () => {
                             <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 custom-scrollbar flex flex-col justify-center">
                                 {/* Asks (Reverse) */}
                                 <div className="flex flex-col-reverse justify-end pb-1 border-b border-slate-800/50">
-                                    {data.asks.slice(0, 12).map((ask, i) => (
+                                    {(data.asks || []).slice(0, 12).map((ask, i) => (
                                         <OrderBookRow key={`a${i}`} price={ask[0]} size={ask[1]} type="ask" maxVol={10} />
                                     ))}
                                 </div>
                                 <div className="text-center py-1 text-xs font-mono text-slate-500 bg-slate-950/30">
-                                    {(data.asks[0]?.[0] - data.bids[0]?.[0] || 0)?.toFixed(2)}
+                                    {((data.asks?.[0]?.[0] || 0) - (data.bids?.[0]?.[0] || 0)).toFixed(2)}
                                 </div>
                                 {/* Bids */}
                                 <div className="pt-1">
-                                    {data.bids.slice(0, 12).map((bid, i) => (
+                                    {(data.bids || []).slice(0, 12).map((bid, i) => (
                                         <OrderBookRow key={`b${i}`} price={bid[0]} size={bid[1]} type="bid" maxVol={10} />
                                     ))}
                                 </div>
