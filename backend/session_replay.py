@@ -22,9 +22,9 @@ class UserSession:
         self.created_at = datetime.utcnow()
         self.last_activity = datetime.utcnow()
         
-        # Session-specific queues
-        self.raw_snapshot_queue = queue.Queue(maxsize=2000)
-        self.processed_snapshot_queue = queue.Queue(maxsize=2000)
+        # Session-specific queues - LIVE MODE: Unlimited
+        self.raw_snapshot_queue = queue.Queue(maxsize=0)  # Unlimited for LIVE mode
+        self.processed_snapshot_queue = queue.Queue(maxsize=0)  # Unlimited for LIVE mode
     
     def start(self):
         """Start replay."""

@@ -277,10 +277,10 @@ REPLAY_BATCH_SIZE = 500
 replay_buffer = deque()
 
 # --------------------------------------------------
-# Analytics Worker (LATENCY FIX #2)
+# Analytics Worker (LATENCY FIX #2) - LIVE MODE: Unlimited Queues
 # --------------------------------------------------
-raw_snapshot_queue = queue.Queue(maxsize=2000)
-processed_snapshot_queue = queue.Queue(maxsize=2000)
+raw_snapshot_queue = queue.Queue(maxsize=0)  # Unlimited for LIVE mode
+processed_snapshot_queue = queue.Queue(maxsize=0)  # Unlimited for LIVE mode
 
 class AdaptiveProcessor:
     """Adaptive analytics processor that handles slow engines gracefully"""
@@ -488,11 +488,8 @@ async def session_replay_loop(session: UserSession):
                 
                 snapshot = db_row_to_snapshot(row)
                 
-                # Process snapshot
-                try:
-                    session.raw_snapshot_queue.put_nowait(snapshot)
-                except queue.Full:
-                    logger.warning(f"Session {session.session_id}: Queue full")
+                # Process snapshot - LIVE MODE: No queue limits
+                session.raw_snapshot_queue.put_nowait(snapshot)  # No exception handling needed for unlimited queue
                 
                 # Replay speed
                 await asyncio.sleep(0.25 / session.speed)
@@ -528,7 +525,8 @@ async def session_broadcast_loop(session: UserSession):
                 
                 metrics.record_snapshot(processing_time, processing_time)
             
-            await asyncio.sleep(0.005)
+            # LIVE MODE: Minimal delay for high-frequency data flow
+            await asyncio.sleep(0.001)  # Reduced from 0.005 to 0.001
         except Exception as e:
             logger.error(f"Session {session.session_id} broadcast error: {e}")
             await asyncio.sleep(0.05)
@@ -551,7 +549,8 @@ async def broadcast_loop():
                 
                 await manager.broadcast(snapshot)
             
-            await asyncio.sleep(0.01)
+            # LIVE MODE: Minimal delay for high-frequency data flow
+            await asyncio.sleep(0.001)  # Reduced from 0.01 to 0.001
         except Exception as e:
             logger.error(f"Broadcast error: {e}")
             await asyncio.sleep(0.1)
@@ -572,7 +571,8 @@ async def processed_broadcast_loop():
                 total_latency = processing_time  # DB + queue already removed
                 metrics.record_snapshot(total_latency, processing_time)
 
-            await asyncio.sleep(0.005)
+            # LIVE MODE: Minimal delay for high-frequency data flow
+            await asyncio.sleep(0.001)  # Reduced from 0.005 to 0.001
         except Exception as e:
             logger.error(f"Processed broadcast error: {e}")
             await asyncio.sleep(0.05)
@@ -592,17 +592,16 @@ def analytics_worker():
             if snapshot is None:
                 continue
 
-            # Check if we should process this snapshot (adaptive mode)
-            if not adaptive_processor.should_process(snapshot):
-                continue  # Skip processing to catch up
+            # LIVE MODE: Process all snapshots - no adaptive throttling
+            # (Removed adaptive processing check to let data flow at its own pace)
 
             # Process using unified logic
             processed, processing_time, used_engine, consecutive_cpp_failures = process_snapshot_wrapper(
                 snapshot, consecutive_cpp_failures, MAX_CPP_FAILURES
             )
 
-            # Record processing time for adaptive mode
-            adaptive_processor.record_processing_time(processing_time)
+            # LIVE MODE: No adaptive processing - removed time recording
+            # (Let data flow at its own pace without throttling)
 
             processed = sanitize(processed)
             processed["engine"] = used_engine  # Track which engine processed this
@@ -657,12 +656,9 @@ async def live_grpc_loop():
                         "source": msg.source
                     }
 
-                    try:
-                        raw_snapshot_queue.put_nowait(snapshot)
-                        logger.debug("Successfully queued live snapshot")
-                    except queue.Full:
-                        metrics.record_error("live_queue_full")
-                        logger.warning("Live snapshot queue is full")
+                    # LIVE MODE: No queue limits - direct put
+                    raw_snapshot_queue.put_nowait(snapshot)
+                    logger.debug("Successfully queued live snapshot")
                         
         except Exception as e:
             logger.error(f"Live gRPC loop error: {e}")
@@ -687,11 +683,8 @@ async def live_snapshot_ingest(snapshot: dict):
     if ACTIVE_SYMBOL and snapshot.get("symbol") != ACTIVE_SYMBOL:
         return
 
-    try:
-        raw_snapshot_queue.put_nowait(snapshot)
-    except queue.Full:
-        metrics.record_error("live_queue_full")
-        logger.warning("LIVE queue full, dropping snapshot")
+    # LIVE MODE: No queue limits - direct put
+    raw_snapshot_queue.put_nowait(snapshot)
 
 
 # --------------------------------------------------

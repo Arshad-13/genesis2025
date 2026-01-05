@@ -9,7 +9,7 @@ import "../styles/dashboard.css";
 const BACKEND_HTTP = import.meta.env.VITE_BACKEND_HTTP || "http://localhost:8000";
 const BACKEND_WS =
   import.meta.env.VITE_BACKEND_WS || `${BACKEND_HTTP.replace(/^http/, "ws")}/ws`;
-const MAX_BUFFER = 100;
+const MAX_BUFFER = 1000; // Increased from 100 to 1000 for LIVE mode
 
 const SYMBOLS = [
   { value: 'BTCUSDT', label: 'BTC/USDT' },
@@ -194,7 +194,7 @@ export default function Dashboard() {
       }
     };
 
-    const intervalId = setInterval(flushBuffer, 100); // 100ms throttle
+    const intervalId = setInterval(flushBuffer, 10); // Reduced from 100ms to 10ms for LIVE mode
 
     return () => {
       clearInterval(intervalId);

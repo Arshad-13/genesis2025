@@ -4,7 +4,7 @@ import websockets
 from datetime import datetime
 import heapq
 
-DEBUG_LIVE_SNAPSHOTS = False   # flip to False to disable
+DEBUG_LIVE_SNAPSHOTS = True   # flip to False to disable
 
 class BinanceDepthClient:
     def __init__(self, symbol: str, depth: int = 20):
