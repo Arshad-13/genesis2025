@@ -15,7 +15,7 @@ export default function CanvasHeatmap({
   // Layout constants
   const PADDING = { left: 10, right: 10, top: 10, bottom: 10 };
 
-  // Handle Resize
+  // Handle Resize with ResizeObserver for better responsiveness
   useEffect(() => {
     const handleResize = () => {
       if (containerRef.current) {
@@ -26,10 +26,16 @@ export default function CanvasHeatmap({
       }
     };
 
-    window.addEventListener("resize", handleResize);
+    // Use ResizeObserver for more efficient resizing
+    const resizeObserver = new ResizeObserver(handleResize);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
     handleResize(); // Init
 
-    return () => window.removeEventListener("resize", handleResize);
+    return () => {
+      resizeObserver.disconnect();
+    };
   }, [height, scale]);
 
   useEffect(() => {

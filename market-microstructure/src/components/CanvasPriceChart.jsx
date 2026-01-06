@@ -21,7 +21,7 @@ export default function CanvasPriceChart({
     return `${d.getHours()}:${d.getMinutes()}:${d.getSeconds()}`;
   };
 
-  // Handle Resize
+  // Handle Resize with ResizeObserver for better responsiveness
   useEffect(() => {
     const handleResize = () => {
       if (containerRef.current) {
@@ -30,10 +30,16 @@ export default function CanvasPriceChart({
       }
     };
 
-    window.addEventListener("resize", handleResize);
+    // Use ResizeObserver for more efficient resizing
+    const resizeObserver = new ResizeObserver(handleResize);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
     handleResize(); // Init
 
-    return () => window.removeEventListener("resize", handleResize);
+    return () => {
+      resizeObserver.disconnect();
+    };
   }, [height]);
 
   useEffect(() => {

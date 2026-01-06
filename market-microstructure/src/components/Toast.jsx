@@ -8,7 +8,7 @@ export default function Toast({ message, type = 'info', onClose }) {
   useEffect(() => {
     const timer = setTimeout(() => {
       handleExit();
-    }, 2000);
+    }, 3500); // Increased from 2000ms for better readability
 
     return () => clearTimeout(timer);
   }, []);
