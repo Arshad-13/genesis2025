@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '../layout/DashboardLayout';
 import CanvasPriceChart from '../components/CanvasPriceChart';
+import logger from '../utils/logger';
 
 // --- Components ---
 
@@ -70,40 +71,40 @@ const ModelTest = () => {
         let interval = null;
         let isMounted = true;
         
-        console.log('[ModelTest] Initializing WebSocket connection to:', `${BACKEND_WS}/${sessionId}`);
+        logger.debug('ModelTest', 'Initializing WebSocket connection to:', `${BACKEND_WS}/${sessionId}`);
 
         const connectWebSocket = () => {
             const ws = new WebSocket(`${BACKEND_WS}/${sessionId}`);
             wsRef.current = ws;
 
             ws.onopen = () => {
-                console.log('[ModelTest] WebSocket connected');
+                logger.info('ModelTest', 'WebSocket connected');
                 if (!isMounted) {
-                    console.log('[ModelTest] Component unmounted, closing WebSocket');
+                    logger.debug('ModelTest', 'Component unmounted, closing WebSocket');
                     ws.close();
                     return;
                 }
                 setStatus(s => ({ ...s, connected: true }));
                 fetch(`${BACKEND_HTTP}/replay/${sessionId}/start`, { method: 'POST' })
-                    .then(() => console.log('[ModelTest] Replay started'))
-                    .catch(err => console.error('[ModelTest] Failed to start replay:', err));
+                    .then(() => logger.info('ModelTest', 'Replay started'))
+                    .catch(err => logger.error('ModelTest', 'Failed to start replay:', err));
             };
 
             ws.onmessage = (e) => {
                 if (!isMounted) return;
                 const msg = JSON.parse(e.data);
-                console.log('[ModelTest] Received message type:', msg.type);
+                logger.debug('ModelTest', 'Received message type:', msg.type);
                 if (msg.type !== 'history') bufferRef.current.push(msg);
             };
 
             ws.onclose = (event) => {
-                console.log('[ModelTest] WebSocket closed:', event.code, event.reason);
+                logger.info('ModelTest', 'WebSocket closed:', event.code, event.reason);
                 if (!isMounted) return;
                 setStatus(s => ({ ...s, connected: false }));
             };
             
             ws.onerror = (err) => {
-                console.error('[ModelTest] WebSocket error:', err);
+                logger.error('ModelTest', 'WebSocket error:', err);
             };
 
             return ws;
@@ -147,7 +148,7 @@ const ModelTest = () => {
             }
             if (wsRef.current) {
                 if (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING) {
-                    console.log('[ModelTest] Cleanup: closing WebSocket');
+                    logger.debug('ModelTest', 'Cleanup: closing WebSocket');
                     wsRef.current.close();
                 }
                 wsRef.current = null;

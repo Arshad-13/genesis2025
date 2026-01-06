@@ -3,6 +3,7 @@ import { Loader2, Radio, Play } from 'lucide-react';
 import DashboardLayout from "../layout/DashboardLayout";
 import Toast from "../components/Toast";
 import { useAuth } from "../contexts/AuthContext";
+import logger from "../utils/logger";
 // import DataExport from "../components/DataExport";
 import "../styles/dashboard.css";
 
@@ -112,7 +113,7 @@ export default function Dashboard() {
   // -------------------------------
   useEffect(() => {
     if (!sessionId) {
-      console.error("No session ID available");
+      logger.error('Dashboard', 'No session ID available');
       return;
     }
 
@@ -163,25 +164,25 @@ export default function Dashboard() {
           bufferRef.current.push(message);
 
         } catch (err) {
-          console.error("Error parsing WebSocket message:", err);
+          logger.error('Dashboard', 'Error parsing WebSocket message:', err);
         }
       };
 
       ws.onclose = (event) => {
-        console.log("❌ Disconnected from session", event.code, event.reason);
+        logger.info('Dashboard', 'Disconnected from session', event.code, event.reason);
 
         if (!intentionallyClosed && reconnectAttempts < maxReconnectAttempts) {
           reconnectAttempts++;
-          console.log(`🔄 Reconnecting (attempt ${reconnectAttempts}/${maxReconnectAttempts})...`);
+          logger.info('Dashboard', `Reconnecting (attempt ${reconnectAttempts}/${maxReconnectAttempts})...`);
           reconnectTimeout = setTimeout(connect, reconnectDelay);
         } else if (reconnectAttempts >= maxReconnectAttempts) {
-          console.error("❌ Max reconnection attempts reached");
+          logger.error('Dashboard', 'Max reconnection attempts reached');
           showToast("Connection lost. Please refresh.", "error");
         }
       };
 
       ws.onerror = (err) => {
-        console.error("WebSocket error:", err);
+        logger.error('Dashboard', 'WebSocket error:', err);
       };
     };
 

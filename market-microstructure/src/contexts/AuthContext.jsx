@@ -40,8 +40,8 @@ export const AuthProvider = ({ children }) => {
   // Login function
   const login = async (email, password) => {
     try {
-      // TODO: Replace with actual API call
-      const response = await fetch('http://localhost:8000/auth/login', {
+      const API_URL = import.meta.env.VITE_BACKEND_HTTP || 'http://localhost:8000';
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -77,8 +77,8 @@ export const AuthProvider = ({ children }) => {
   // Register function
   const register = async (name, email, password) => {
     try {
-      // TODO: Replace with actual API call
-      const response = await fetch('http://localhost:8000/auth/register', {
+      const API_URL = import.meta.env.VITE_BACKEND_HTTP || 'http://localhost:8000';
+      const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
