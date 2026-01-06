@@ -46,7 +46,7 @@ class ModelInference:
             
             # Load Model
             self.model = DeepLOB(y_len=3).to(self.device)
-            self.model.load_state_dict(torch.load(model_path, map_location=self.device))
+            self.model.load_state_dict(torch.load(model_path, map_location=self.device, weights_only=True))
             self.model.eval()
             logger.info(f"✅ Model loaded from {model_path}")
             

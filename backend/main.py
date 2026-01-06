@@ -186,7 +186,7 @@ def initialize_cpp_engine():
             return False
         
         try:
-            cpp_client = CppAnalyticsClient(host=CPP_ENGINE_HOST, port=CPP_ENGINE_PORT, timeout_ms=100)
+            temp_client = CppAnalyticsClient(host=CPP_ENGINE_HOST, port=CPP_ENGINE_PORT, timeout_ms=100)
             
             # Test connection with dummy snapshot
             test_snapshot = {
@@ -195,9 +195,11 @@ def initialize_cpp_engine():
                 "asks": [[100.1, 15.0], [100.2, 25.0]],
                 "mid_price": 100.05
             }
-            result = cpp_client.process_snapshot(test_snapshot)
+            result = temp_client.process_snapshot(test_snapshot)
             
             logger.info(f"✅ C++ engine connected at {CPP_ENGINE_HOST}:{CPP_ENGINE_PORT} (latency: {result.get('latency_ms', 0):.2f}ms)")
+            # Only assign to global after successful test
+            cpp_client = temp_client
             engine_mode = "cpp"
             return True
             
@@ -567,14 +569,18 @@ async def session_replay_loop(session: UserSession):
                 # Process snapshot
                 try:
                     # Backpressure handling: check queue size before pushing
-                    if session.raw_snapshot_queue.qsize() > 1500:  # 75% capacity threshold
-                        logger.warning(f"Session {session.session_id}: High backpressure, skipping snapshot")
+                    queue_size = session.raw_snapshot_queue.qsize()
+                    if queue_size > 1500:  # 75% capacity threshold
+                        logger.warning(f"Session {session.session_id}: High backpressure ({queue_size}/2000), skipping snapshot")
+                        metrics.record_error("queue_backpressure")
                         await asyncio.sleep(0.5)  # Slow down replay
                         continue
                     
                     session.raw_snapshot_queue.put_nowait(snapshot)
+                    consecutive_errors = 0  # Reset on success
                 except queue.Full:
                     logger.warning(f"Session {session.session_id}: Queue full, dropping snapshot")
+                    metrics.record_error("queue_full")
                     consecutive_errors += 1
                 
                 # Replay speed
@@ -884,23 +890,29 @@ async def reset_strategy(session_id: str):
 @app.post("/strategy/start")
 async def start_strategy_default():
     """Start strategy for default session (backward compatibility)"""
-    # Use first active session or create 'default' session
+    # Use first active session or return error
     sessions = session_manager.sessions
-    session_id = next(iter(sessions.keys())) if sessions else "default"
+    if not sessions:
+        return {"status": "error", "message": "No active sessions found. Please establish a WebSocket connection first."}
+    session_id = next(iter(sessions.keys()))
     return await start_strategy(session_id)
 
 @app.post("/strategy/stop")
 async def stop_strategy_default():
     """Stop strategy for default session (backward compatibility)"""
     sessions = session_manager.sessions
-    session_id = next(iter(sessions.keys())) if sessions else "default"
+    if not sessions:
+        return {"status": "error", "message": "No active sessions found."}
+    session_id = next(iter(sessions.keys()))
     return await stop_strategy(session_id)
 
 @app.post("/strategy/reset")
 async def reset_strategy_default():
     """Reset strategy for default session (backward compatibility)"""
     sessions = session_manager.sessions
-    session_id = next(iter(sessions.keys())) if sessions else "default"
+    if not sessions:
+        return {"status": "error", "message": "No active sessions found."}
+    session_id = next(iter(sessions.keys()))
     return await reset_strategy(session_id)
 
 # --------------------------------------------------

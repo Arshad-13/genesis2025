@@ -131,6 +131,19 @@ export default function Dashboard() {
       ws.onopen = () => {
         console.log(`✅ Connected to session ${sessionId}`);
         reconnectAttempts = 0;
+        
+        // Auto-start replay on connection (like ModelTest)
+        if (currentMode === "REPLAY") {
+          fetch(`${BACKEND_HTTP}/replay/${sessionId}/start`, { 
+            method: 'POST',
+            headers: { "Authorization": `Bearer ${localStorage.getItem('auth_token')}` }
+          })
+            .then(() => {
+              console.log('✅ Replay auto-started');
+              setReplayState("PLAYING");
+            })
+            .catch(err => console.error('Failed to auto-start replay:', err));
+        }
       };
 
       ws.onmessage = (event) => {

@@ -144,9 +144,12 @@ const ModelTest = () => {
                 clearInterval(interval);
                 console.log('[ModelTest] Cleanup: cleared interval');
             }
-            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-                console.log('[ModelTest] Cleanup: closing WebSocket');
-                wsRef.current.close();
+            if (wsRef.current) {
+                if (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING) {
+                    console.log('[ModelTest] Cleanup: closing WebSocket');
+                    wsRef.current.close();
+                }
+                wsRef.current = null;
             }
         };
     }, []);
