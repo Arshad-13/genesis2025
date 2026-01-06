@@ -57,7 +57,8 @@ const ModelTest = () => {
     const [stats, setStats] = useState({ unrealized: 0, total: 0, position: 0 });
     const [history, setHistory] = useState({ trades: [], prices: [] });
     const bufferRef = useRef([]);
-    const sessionIdRef = useRef("model-test-session-" + Math.random().toString(36).substr(2, 9));
+    // Use crypto.randomUUID for better randomness and no collisions
+    const sessionIdRef = useRef("model-test-session-" + (crypto.randomUUID ? crypto.randomUUID().substring(0, 8) : Math.random().toString(36).substr(2, 9)));
     const wsRef = useRef(null);
 
     // Connection & Data Logic

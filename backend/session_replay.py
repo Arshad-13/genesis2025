@@ -66,6 +66,13 @@ class UserSession:
     
     def set_speed(self, speed: int):
         """Set replay speed."""
+        # Validate input type
+        try:
+            speed = int(speed)
+        except (TypeError, ValueError):
+            logger.warning(f"Session {self.session_id}: Invalid speed type {type(speed)}, defaulting to 1")
+            speed = 1
+        
         self.speed = max(1, min(speed, 10))
         self.last_activity = datetime.now()
         logger.info(f"Session {self.session_id}: Speed set to {self.speed}x")

@@ -36,9 +36,18 @@ from typing import Dict
 # Load environment variables from .env file
 load_dotenv()
 
+# Configuration
 USE_CPP_ENGINE = os.getenv("USE_CPP_ENGINE", "true").lower() == "true"  # Auto-enable C++ engine
 CPP_ENGINE_HOST = os.getenv("CPP_ENGINE_HOST", "localhost")
 CPP_ENGINE_PORT = int(os.getenv("CPP_ENGINE_PORT", "50051"))
+
+# Buffer and Queue Configuration
+MAX_BUFFER_SIZE = int(os.getenv("MAX_BUFFER_SIZE", "100"))
+RAW_QUEUE_SIZE = int(os.getenv("RAW_QUEUE_SIZE", "2000"))
+PROCESSED_QUEUE_SIZE = int(os.getenv("PROCESSED_QUEUE_SIZE", "2000"))
+REPLAY_BATCH_SIZE = int(os.getenv("REPLAY_BATCH_SIZE", "500"))
+BACKPRESSURE_THRESHOLD = int(os.getenv("BACKPRESSURE_THRESHOLD", "1500"))  # 75% of queue size
+
 engine_mode = "unknown"  # Track which engine is active: "cpp", "python", or "unavailable"
 
 
@@ -270,7 +279,6 @@ def process_snapshot_wrapper(snapshot, current_failures, max_failures=5):
     return processed, processing_time, used_engine, new_failures
 
 
-MAX_BUFFER = 100
 data_buffer: List[dict] = []
 simulation_queue = queue.Queue()
 MODE = "REPLAY"  # REPLAY | LIVE | SIMULATION
@@ -280,14 +288,13 @@ ACTIVE_SYMBOL = None   # e.g. "BTCUSDT"
 # --------------------------------------------------
 # DB Replay Buffer (LATENCY FIX #1)
 # --------------------------------------------------
-REPLAY_BATCH_SIZE = 500
 replay_buffer = deque()
 
 # --------------------------------------------------
 # Analytics Worker (LATENCY FIX #2)
 # --------------------------------------------------
-raw_snapshot_queue = queue.Queue(maxsize=2000)
-processed_snapshot_queue = queue.Queue(maxsize=2000)
+raw_snapshot_queue = queue.Queue(maxsize=RAW_QUEUE_SIZE)
+processed_snapshot_queue = queue.Queue(maxsize=PROCESSED_QUEUE_SIZE)
 
 class AdaptiveProcessor:
     """Adaptive analytics processor that handles slow engines gracefully"""
@@ -570,8 +577,8 @@ async def session_replay_loop(session: UserSession):
                 try:
                     # Backpressure handling: check queue size before pushing
                     queue_size = session.raw_snapshot_queue.qsize()
-                    if queue_size > 1500:  # 75% capacity threshold
-                        logger.warning(f"Session {session.session_id}: High backpressure ({queue_size}/2000), skipping snapshot")
+                    if queue_size > BACKPRESSURE_THRESHOLD:
+                        logger.warning(f"Session {session.session_id}: High backpressure ({queue_size}/{RAW_QUEUE_SIZE}), skipping snapshot")
                         metrics.record_error("queue_backpressure")
                         await asyncio.sleep(0.5)  # Slow down replay
                         continue
@@ -669,7 +676,7 @@ async def session_csv_replay_loop(session: UserSession, csv_path: str):
                 # If unnamed columns, we might need to assume indices.
                 # Let's assume standard LOB format.
                 
-                # Construct snapshot
+                # Construct snapshot with safer column handling
                 snapshot = {
                     "timestamp": datetime.utcnow().isoformat(),
                     "symbol": "BTCUSDT",
@@ -678,35 +685,52 @@ async def session_csv_replay_loop(session: UserSession, csv_path: str):
                     "mid_price": 0.0
                 }
                 
-                # Reconstruct Bids/Asks from columns
-                # Col 0-1: Bid1 Price, Vol
-                # ...
-                # Col 18-19: Bid10 Price, Vol
-                # Col 20-21: Ask1 Price, Vol
-                # ...
+                # Try to use column names if available, fallback to positional
+                try:
+                    # Check if we have named columns (safer approach)
+                    if any(col.startswith('bid_price') for col in row.keys()):
+                        # Use named columns
+                        for i in range(1, 11):
+                            bid_price_col = f'bid_price_{i}'
+                            bid_vol_col = f'bid_volume_{i}'
+                            if bid_price_col in row and bid_vol_col in row:
+                                snapshot['bids'].append([float(row[bid_price_col]), float(row[bid_vol_col])])
+                        for i in range(1, 11):
+                            ask_price_col = f'ask_price_{i}'
+                            ask_vol_col = f'ask_volume_{i}'
+                            if ask_price_col in row and ask_vol_col in row:
+                                snapshot['asks'].append([float(row[ask_price_col]), float(row[ask_vol_col])])
+                    else:
+                        # Fallback to positional indexing
+                        vals = list(row.values())
+                        start_idx = 1 if "Unnamed: 0" in row else 0
+                        features = vals[start_idx:start_idx+40] if len(vals) >= start_idx + 40 else vals[start_idx:]
+                        
+                        if len(features) < 40:
+                            logger.warning(f"Insufficient features in CSV row: {len(features)}/40")
+                            continue
+                        
+                        current_bids = []
+                        current_asks = []
+                        
+                        for i in range(0, 20, 2):
+                            if i+1 < len(features):
+                                current_bids.append([float(features[i]), float(features[i+1])])
+                        
+                        for i in range(20, 40, 2):
+                            if i+1 < len(features):
+                                current_asks.append([float(features[i]), float(features[i+1])])
+                        
+                        snapshot["bids"] = current_bids
+                        snapshot["asks"] = current_asks
                 
-                # Use list(row.values()) to get ordered values
-                vals = list(row.values())
-                # Skip index if present (usually first col if read_csv keeps index)
-                start_idx = 1 if "Unnamed: 0" in row else 0
-                
-                # Features usually 1-40.
-                features = vals[start_idx:start_idx+40]
-                
-                current_bids = []
-                current_asks = []
-                
-                for i in range(0, 20, 2):
-                    current_bids.append([float(features[i]), float(features[i+1])])
-                
-                for i in range(20, 40, 2):
-                    current_asks.append([float(features[i]), float(features[i+1])])
+                    # Calc mid price from top levels
+                    if snapshot["bids"] and snapshot["asks"]:
+                        snapshot["mid_price"] = (snapshot["bids"][0][0] + snapshot["asks"][0][0]) / 2
                     
-                snapshot["bids"] = current_bids
-                snapshot["asks"] = current_asks
-                # Calc mid price from top levels
-                if current_bids and current_asks:
-                    snapshot["mid_price"] = (current_bids[0][0] + current_asks[0][0]) / 2
+                except (ValueError, KeyError, IndexError) as e:
+                    logger.error(f"CSV parsing error: {e}")
+                    continue
                 
                 try:
                     session.raw_snapshot_queue.put_nowait(snapshot)
@@ -750,6 +774,10 @@ async def processed_broadcast_loop():
 
                 data_buffer.append(processed)
                 if len(data_buffer) > MAX_BUFFER:
+                    data_buffer.pop(0)
+
+                # Trim buffer if exceeds max size
+                if len(data_buffer) > MAX_BUFFER_SIZE:
                     data_buffer.pop(0)
 
                 await manager.broadcast(processed)
