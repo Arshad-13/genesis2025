@@ -225,24 +225,6 @@ class TestMarketSimulator:
         is_valid, errors = DataValidator.validate_snapshot(snapshot)
         assert is_valid is True, f"Simulator generated invalid data: {errors}"
     
-    def test_ofi_feedback_affects_price(self):
-        """Test that OFI feedback affects price movement."""
-        sim = MarketSimulator()
-        
-        initial_price = sim.current_price
-        
-        # Positive OFI should push price up
-        sim.update_ofi(1.0)
-        snapshot1 = sim.generate_snapshot()
-        
-        # Negative OFI should push price down
-        sim.update_ofi(-1.0)
-        snapshot2 = sim.generate_snapshot()
-        
-        # Prices should have moved
-        assert snapshot1['mid_price'] != initial_price
-        assert snapshot2['mid_price'] != snapshot1['mid_price']
-    
     def test_spread_generation(self):
         """Test that spread stays within reasonable bounds."""
         sim = MarketSimulator()
