@@ -39,7 +39,7 @@ class SnapshotProcessor:
         if self.engine_mode == "cpp" and self.cpp_client and consecutive_failures < self.max_failures:
             try:
                 start = time.time()
-                processed = self.cpp_client.ProcessSnapshot(snapshot)
+                processed = self.cpp_client.process_snapshot(snapshot)
                 processing_time = (time.time() - start) * 1000
                 
                 # Reset failure count on success

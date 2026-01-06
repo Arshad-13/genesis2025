@@ -926,7 +926,7 @@ class AnalyticsEngine:
             
             # Record trade info
             trade_info = {
-                'timestamp': snapshot.get('timestamp', datetime.now()),
+                'timestamp': snapshot.get('timestamp', datetime.now().isoformat()),
                 'price': trade_price,
                 'volume': trade_volume,
                 'side': trade_side,

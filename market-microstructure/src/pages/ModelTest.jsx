@@ -55,7 +55,7 @@ const ModelTest = () => {
         processing_time: 0
     });
     const [status, setStatus] = useState({ connected: false, active: false });
-    const [stats, setStats] = useState({ unrealized: 0, total: 0, position: 0 });
+    const [stats, setStats] = useState({ realized: 0, unrealized: 0, total: 0, position: 0 });
     const [history, setHistory] = useState({ trades: [], prices: [] });
     const bufferRef = useRef([]);
     // Use crypto.randomUUID for better randomness and no collisions
@@ -119,10 +119,18 @@ const ModelTest = () => {
 
                 setData(latest);
                 if (latest.strategy) {
-                    setStats(latest.strategy.pnl);
-                    setStatus(s => ({ ...s, active: latest.strategy.pnl.is_active }));
+                    const pnlData = latest.strategy.pnl || {};
+                    setStats({
+                        realized: pnlData.realized || 0,
+                        unrealized: pnlData.unrealized || 0,
+                        total: pnlData.total || 0,
+                        position: pnlData.position || 0
+                    });
+                    setStatus(s => ({ ...s, active: pnlData.is_active || false }));
                     if (latest.strategy.trade_event) {
-                        setHistory(h => ({ ...h, trades: [latest.strategy.trade_event, ...h.trades].slice(0, 50) }));
+                        const tradeEvent = latest.strategy.trade_event;
+                        logger.debug('ModelTest', 'Trade event received:', tradeEvent);
+                        setHistory(h => ({ ...h, trades: [tradeEvent, ...h.trades].slice(0, 50) }));
                     }
                 }
 
@@ -165,11 +173,24 @@ const ModelTest = () => {
         const response = await fetch(`${import.meta.env.VITE_BACKEND_HTTP || "http://localhost:8000"}/strategy/reset`, { method: 'POST' });
         const data = await response.json();
         // Update local state immediately
-        setStats({ unrealized: 0, total: 0, position: 0 });
+        setStats({ realized: 0, unrealized: 0, total: 0, position: 0 });
         setHistory({ trades: [], prices: history.prices }); // Keep price history, clear trades
         setStatus(s => ({ ...s, active: false }));
     };
 
+    // Calculate trade statistics
+    const tradeStats = React.useMemo(() => {
+        const exits = history.trades.filter(t => t.type === 'EXIT' && t.pnl !== undefined);
+        const wins = exits.filter(t => t.pnl > 0).length;
+        const losses = exits.filter(t => t.pnl < 0).length;
+        const winRate = exits.length > 0 ? (wins / exits.length) * 100 : 0;
+        const avgWin = wins > 0 ? exits.filter(t => t.pnl > 0).reduce((sum, t) => sum + t.pnl, 0) / wins : 0;
+        const avgLoss = losses > 0 ? Math.abs(exits.filter(t => t.pnl < 0).reduce((sum, t) => sum + t.pnl, 0) / losses) : 0;
+        const profitFactor = avgLoss > 0 ? (avgWin * wins) / (avgLoss * losses) : wins > 0 ? 999 : 0;
+        return { wins, losses, winRate, avgWin, avgLoss, profitFactor, totalTrades: exits.length };
+    }, [history.trades]);
+
+    // Calculate current signal
     const pred = data.prediction || { up: 0, neutral: 1, down: 0 };
     const maxProb = Math.max(pred.up, pred.neutral, pred.down);
     const signal = maxProb === pred.up && pred.up > 0.3 ? "LONG" : (maxProb === pred.down && pred.down > 0.3 ? "SHORT" : "HOLD");
@@ -193,49 +214,39 @@ const ModelTest = () => {
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', position: 'relative', zIndex: 10 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0.75rem', borderRadius: '0.25rem', backgroundColor: '#1e293b', border: '1px solid #334155' }}>
                             <span style={{ height: '0.5rem', width: '0.5rem', borderRadius: '9999px', backgroundColor: status.active ? '#22c55e' : '#64748b', animation: status.active ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none' }} />
                             <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'white' }}>{status.active ? "TRADING ACTIVE" : "TRADING STOPPED"}</span>
                         </div>
                         <button
+                            type="button"
                             onClick={toggleEngine}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                padding: '0.375rem 1rem',
-                                borderRadius: '0.25rem',
-                                fontSize: '0.75rem',
-                                fontWeight: 'bold',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                backgroundColor: status.active ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-                                color: status.active ? '#f87171' : '#4ade80',
-                                border: status.active ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(34, 197, 94, 0.3)'
-                            }}
+                            className={`flex items-center gap-2 px-4 py-1.5 rounded text-xs font-bold cursor-pointer transition-all relative z-10 ${
+                                status.active 
+                                ? 'bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20' 
+                                : 'bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20'
+                            }`}
                         >
-                            {status.active ? <><Square size={14} fill="currentColor" /> STOP</> : <><Play size={14} fill="currentColor" /> START</>}
+                            {status.active ? (
+                                <>
+                                    <Square size={14} fill="currentColor" />
+                                    <span>STOP</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Play size={14} fill="currentColor" />
+                                    <span>START</span>
+                                </>
+                            )}
                         </button>
                         <button
+                            type="button"
                             onClick={resetStrategy}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                padding: '0.375rem 1rem',
-                                borderRadius: '0.25rem',
-                                fontSize: '0.75rem',
-                                fontWeight: 'bold',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                backgroundColor: 'rgba(168, 85, 247, 0.1)',
-                                color: '#a78bfa',
-                                border: '1px solid rgba(168, 85, 247, 0.3)'
-                            }}
+                            className="flex items-center gap-2 px-4 py-1.5 rounded text-xs font-bold cursor-pointer transition-all bg-purple-500/10 text-purple-400 border border-purple-500/30 hover:bg-purple-500/20 relative z-10"
                             title="Reset all PnL and trade history"
                         >
-                            RESET
+                            <span>RESET</span>
                         </button>
                     </div>
                 </header>
@@ -247,13 +258,18 @@ const ModelTest = () => {
                     <div style={{ width: '25%', display: 'flex', flexDirection: 'column', gap: '1rem', minHeight: 0 }}>
                         {/* Metrics Block */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.5rem', flexShrink: 0 }}>
-                            <div className="grid grid-cols-2 gap-2">
-                                <MetricCard label="Unrealized PnL" value={(stats.unrealized || 0).toFixed(2)} color="text-blue-400" icon={TrendingUp} />
-                                <MetricCard label="Total PnL" value={(stats.total || 0).toFixed(2)} color="text-green-400" icon={DollarSign} />
+                            <div className="grid grid-cols-3 gap-2">
+                                <MetricCard label="Realized PnL" value={(stats.realized || 0).toFixed(2)} color="text-green-400" icon={DollarSign} />
+                                <MetricCard label="Unrealized" value={(stats.unrealized || 0).toFixed(2)} color="text-blue-400" icon={TrendingUp} />
+                                <MetricCard label="Total PnL" value={(stats.total || 0).toFixed(2)} color="text-emerald-400" icon={DollarSign} />
                             </div>
                             <div className="grid grid-cols-2 gap-2">
-                                <MetricCard label="Position" value={stats.position || 0} color="text-purple-400" icon={Activity} />
+                                <MetricCard label="Position" value={stats.position || 0} subValue={tradeStats.totalTrades > 0 ? `${tradeStats.wins}W/${tradeStats.losses}L` : 'No trades'} color="text-purple-400" icon={Activity} />
+                                <MetricCard label="Win Rate" value={tradeStats.totalTrades > 0 ? `${tradeStats.winRate.toFixed(1)}%` : '-'} subValue={tradeStats.totalTrades > 0 ? `PF: ${tradeStats.profitFactor.toFixed(2)}` : ''} color="text-cyan-400" icon={BarChart2} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
                                 <MetricCard label="Mid Price" value={(data.mid_price || 0).toFixed(2)} subValue={`Spr: ${((data.asks?.[0]?.[0] || 0) - (data.bids?.[0]?.[0] || 0)).toFixed(2)}`} color="text-orange-400" icon={Server} />
+                                <MetricCard label="Latency" value={`${(data.processing_time || 0).toFixed(1)}ms`} subValue={status.connected ? 'Connected' : 'Disconnected'} color="text-slate-400" icon={Clock} />
                             </div>
                         </div>
 
@@ -328,29 +344,59 @@ const ModelTest = () => {
                                 <span className="text-xs font-bold text-slate-400 uppercase">Execution Log</span>
                                 <span className="text-[10px] text-slate-500">{history.trades.length} trades</span>
                             </div>
-                            <div className="overflow-auto custom-scrollbar flex-1 p-0">
-                                <table className="w-full text-xs text-left text-slate-400">
-                                    <thead className="bg-slate-950 font-medium text-slate-500 sticky top-0">
-                                        <tr>
-                                            <th className="px-3 py-2">Time</th>
-                                            <th className="px-2 py-2">Side</th>
-                                            <th className="px-2 py-2 text-right">Price</th>
-                                            <th className="px-3 py-2 text-right">PnL</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-800/50">
-                                        {history.trades.map((t, i) => (
-                                            <tr key={i} className="hover:bg-slate-800/30 font-mono">
-                                                <td className="px-3 py-1.5 text-slate-500">{new Date(t.timestamp).toLocaleTimeString([], { hour12: false })}</td>
-                                                <td className={`px-2 py-1.5 font-bold ${t.side === 'BUY' ? 'text-green-400' : 'text-red-400'}`}>{t.side}</td>
-                                                <td className="px-2 py-1.5 text-right">{t.price.toFixed(2)}</td>
-                                                <td className={`px-3 py-1.5 text-right ${t.pnl > 0 ? 'text-green-400' : (t.pnl < 0 ? 'text-red-400' : 'text-slate-600')}`}>
-                                                    {t.pnl ? t.pnl.toFixed(2) : '-'}
-                                                </td>
+                            <div className="overflow-auto custom-scrollbar flex-1 p-0 relative min-h-[300px]">
+                                {history.trades.length === 0 ? (
+                                    <div className="absolute inset-0 flex items-center justify-center text-slate-500 text-sm">
+                                        <div className="text-center py-8">
+                                            <List className="mx-auto mb-2 opacity-30" size={32} />
+                                            <p>No trades yet</p>
+                                            <p className="text-xs text-slate-600 mt-1">Trades will appear here when strategy is active</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <table className="w-full text-xs text-left text-slate-400">
+                                        <thead className="bg-slate-950 font-medium text-slate-500 sticky top-0">
+                                            <tr>
+                                                <th className="px-2 py-2">Time</th>
+                                                <th className="px-2 py-2">Type</th>
+                                                <th className="px-2 py-2">Side</th>
+                                                <th className="px-2 py-2 text-right">Price</th>
+                                                <th className="px-2 py-2 text-right">Size</th>
+                                                <th className="px-2 py-2 text-right">PnL</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-800/50">
+                                            {history.trades.map((t, i) => {
+                                                const isEntry = t.type === 'ENTRY';
+                                                const isExit = t.type === 'EXIT';
+                                                const pnlClass = isEntry ? 'text-slate-600' : 
+                                                    (t.pnl > 0 ? 'text-green-400' : (t.pnl < 0 ? 'text-red-400' : 'text-slate-600'));
+                                                return (
+                                                    <tr key={i} className={`hover:bg-slate-800/30 font-mono ${isExit ? 'bg-slate-800/20' : ''}`}>
+                                                        <td className="px-2 py-1.5 text-slate-500 text-[10px]">{new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</td>
+                                                        <td className="px-2 py-1.5">
+                                                            <span className={`text-[9px] px-1.5 py-0.5 rounded ${isEntry ? 'bg-blue-500/20 text-blue-300' : 'bg-purple-500/20 text-purple-300'}`}>
+                                                                {t.type || 'TRADE'}
+                                                            </span>
+                                                        </td>
+                                                        <td className={`px-2 py-1.5 font-bold ${t.side === 'BUY' ? 'text-green-400' : 'text-red-400'}`}>{t.side}</td>
+                                                        <td className="px-2 py-1.5 text-right">{(t.price || 0).toFixed(2)}</td>
+                                                        <td className="px-2 py-1.5 text-right text-slate-400">{(t.size || 0).toFixed(2)}</td>
+                                                        <td className={`px-2 py-1.5 text-right font-semibold ${pnlClass}`}>
+                                                            {isEntry ? (
+                                                                <span className="text-[10px] text-slate-500" title={`Confidence: ${((t.confidence || 0) * 100).toFixed(0)}%`}>
+                                                                    {((t.confidence || 0) * 100).toFixed(0)}%
+                                                                </span>
+                                                            ) : (
+                                                                (t.pnl !== undefined && t.pnl !== null) ? t.pnl.toFixed(2) : '0.00'
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                )}
                             </div>
                         </div>
                     </div>

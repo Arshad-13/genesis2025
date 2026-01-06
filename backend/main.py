@@ -378,8 +378,8 @@ class ConnectionManager:
             del self.websocket_to_session[websocket]
             
             # Cleanup inference buffers for this session
-            if inference:
-                inference.cleanup_session(session_id)
+            if inference_engine:
+                inference_engine.cleanup_session(session_id)
             
             logger.info(f"WebSocket disconnected for session {session_id}")
 

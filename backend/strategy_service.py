@@ -50,6 +50,14 @@ class StrategyEngine:
         best_ask = snapshot['asks'][0][0] if snapshot['asks'] else 0
         mid_price = snapshot.get('mid_price', (best_bid + best_ask) / 2)
         timestamp = snapshot.get('timestamp')
+        
+        # Ensure timestamp is a string (ISO format)
+        if timestamp and not isinstance(timestamp, str):
+            from datetime import datetime
+            if isinstance(timestamp, datetime):
+                timestamp = timestamp.isoformat()
+            else:
+                timestamp = str(timestamp)
 
         prob_up = prediction['up']
         prob_down = prediction['down']
