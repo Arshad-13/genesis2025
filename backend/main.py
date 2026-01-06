@@ -31,6 +31,7 @@ from rpc_stubs import live_pb2, live_pb2_grpc
 
 from session_replay import SessionManager, UserSession
 from utils.security import decode_access_token
+from utils.data import sanitize
 from typing import Dict
 from snapshot_processor import SnapshotProcessor
 
@@ -50,18 +51,6 @@ REPLAY_BATCH_SIZE = int(os.getenv("REPLAY_BATCH_SIZE", "500"))
 BACKPRESSURE_THRESHOLD = int(os.getenv("BACKPRESSURE_THRESHOLD", "1500"))  # 75% of queue size
 
 engine_mode = "unknown"  # Track which engine is active: "cpp", "python", or "unavailable"
-
-
-def sanitize(obj):
-    if isinstance(obj, dict):
-        return {k: sanitize(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [sanitize(v) for v in obj]
-    if isinstance(obj, datetime):
-        return obj.isoformat()
-    if isinstance(obj, Decimal):
-        return float(obj)
-    return obj
 
 
 # --------------------------------------------------
@@ -225,8 +214,12 @@ def initialize_cpp_engine():
             cpp_client = None
             return False
 
-# Initialize snapshot processor service
-snapshot_processor = SnapshotProcessor(cpp_client=None, max_failures=5)
+# Initialize snapshot processor service (requires engine to be initialized)
+snapshot_processor = SnapshotProcessor(
+    cpp_client=None, 
+    analytics_engine=engine,
+    max_failures=5
+)
 
 
 data_buffer: List[dict] = []
@@ -882,8 +875,9 @@ async def live_snapshot_ingest(snapshot: dict):
 # --------------------------------------------------
 @app.on_event("startup")
 async def startup():
-    # Create database tables
-    Base.metadata.create_all(bind=db_engine)
+    # Create database tables only if engine is available
+    if db_engine:
+        Base.metadata.create_all(bind=db_engine)
     
     # Initialize C++ engine
     initialize_cpp_engine()

@@ -4,7 +4,7 @@ Centralizes business logic for processing market snapshots
 """
 import logging
 from typing import Tuple, Optional, Dict, Any
-from analytics_core import process_snapshot as py_process_snapshot, sanitize
+from utils.data import sanitize
 
 logger = logging.getLogger(__name__)
 
@@ -12,8 +12,9 @@ logger = logging.getLogger(__name__)
 class SnapshotProcessor:
     """Service class for processing market snapshots with fallback logic"""
     
-    def __init__(self, cpp_client=None, max_failures: int = 5):
+    def __init__(self, cpp_client=None, analytics_engine=None, max_failures: int = 5):
         self.cpp_client = cpp_client
+        self.analytics_engine = analytics_engine
         self.max_failures = max_failures
         self.engine_mode = "cpp" if cpp_client else "python"
     
@@ -74,8 +75,11 @@ class SnapshotProcessor:
         """Process snapshot using Python analytics engine"""
         import time
         
+        if not self.analytics_engine:
+            raise RuntimeError("Analytics engine not initialized")
+        
         start = time.time()
-        processed = py_process_snapshot(snapshot)
+        processed = self.analytics_engine.process_snapshot(snapshot)
         processing_time = (time.time() - start) * 1000
         
         engine_name = "python_fallback" if fallback else "python"
