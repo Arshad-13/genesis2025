@@ -16,6 +16,7 @@ pytest-asyncio
 pytest-cov
 httpx
 python-dotenv
+torch
 
 # Authentication & Security
 python-jose[cryptography]
@@ -24,3 +25,4 @@ python-multipart
 pydantic[email]
 psycopg2-binary
 alembic
+
