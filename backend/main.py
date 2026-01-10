@@ -198,9 +198,10 @@ async def lifespan(app: FastAPI):
         logger.info("Cleaning up model resources...")
         if hasattr(inference_engine, 'model') and inference_engine.model is not None:
             inference_engine.session_buffers.clear()
-            if hasattr(inference_engine.model, 'cpu'):
+            if inference_engine.model is not None and hasattr(inference_engine.model, 'cpu'):
                 inference_engine.model.cpu()  # Move model off GPU
-            del inference_engine.model
+            
+            inference_engine.model = None # Set to None instead of del to avoid AttributeError
         
         import gc
         gc.collect()
