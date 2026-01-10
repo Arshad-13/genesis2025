@@ -17,6 +17,13 @@ export default function Sidebar({ isOpen, onClose, activePage = "home" }) {
       path: "/dashboard",
       active: false,
     },
+    {
+      id: "predict",
+      icon: TrendingDown,
+      label: "Market Predict",
+      path: "/market-predict",
+      active: false,
+    },
   ];
 
   const [activeItem, setActiveItem] = useState(activePage);
@@ -124,7 +131,7 @@ export default function Sidebar({ isOpen, onClose, activePage = "home" }) {
               animation: "cyber-scan 3s linear infinite"
             }}
           />
-          
+
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div
               style={{
@@ -248,7 +255,7 @@ export default function Sidebar({ isOpen, onClose, activePage = "home" }) {
               pointerEvents: "none"
             }}
           />
-          
+
           <div
             style={{
               marginBottom: "20px",
@@ -364,7 +371,7 @@ export default function Sidebar({ isOpen, onClose, activePage = "home" }) {
                 animation: "cyber-scan 4s linear infinite"
               }}
             />
-            
+
             <p
               style={{
                 margin: "0 0 12px 0",

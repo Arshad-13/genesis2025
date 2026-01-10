@@ -100,7 +100,7 @@ const OrderBookRow = ({ price, size, type, maxVol }) => {
 
 // --- MAIN PAGE ---
 
-const ModelTest = () => {
+const MarketPredict = () => {
     // STATE
     const [data, setData] = useState({
         mid_price: 0, bids: [], asks: [], prediction: { up: 0, neutral: 0, down: 0 }, processing_time: 0
@@ -140,7 +140,26 @@ const ModelTest = () => {
                 const msg = JSON.parse(e.data);
                 if (msg.type === 'snapshot') bufferRef.current.push(msg);
                 else if (msg.type === 'trade_event') setHistory(h => ({ ...h, trades: [msg.data, ...h.trades].slice(0, 50) }));
-                else if (msg.type === 'history' && chartRef.current) chartRef.current.setData(msg.data);
+                else if (msg.type === 'history') {
+                    if (chartRef.current) chartRef.current.setData(msg.data);
+
+                    // Recover past trades from history snapshots
+                    const pastTrades = msg.data
+                        .filter(snap => snap.strategy?.trade_event)
+                        .map(snap => snap.strategy.trade_event);
+                    //.reverse(); // Don't reverse yet, let dedup sort handle it
+
+                    if (pastTrades.length > 0) {
+                        setHistory(h => {
+                            const allTrades = [...pastTrades, ...h.trades];
+                            // Dedup by ID and Sort Newest First
+                            const uniqueTrades = Array.from(new Map(allTrades.map(t => [t.id, t])).values())
+                                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                                .slice(0, 50);
+                            return { ...h, trades: uniqueTrades };
+                        });
+                    }
+                }
             };
 
             ws.onclose = () => { if (isMounted) { setStatus(s => ({ ...s, connected: false })); setTimeout(connect, 2000); } };
@@ -361,4 +380,4 @@ const ModelTest = () => {
     );
 };
 
-export default ModelTest;
+export default MarketPredict;
