@@ -120,6 +120,7 @@ A professional-grade high-frequency trading (HFT) market surveillance platform f
   └────────────────┘  └──────────────────┘  └────────────────┘
 ```
 
+<img src="./assets/Architecture.jpg" width="600" alt="Architecture">
 ---
 
 ## 📦 Tech Stack
@@ -467,8 +468,18 @@ docker-compose restart postgres
 # Verify connection
 psql -h localhost -U genesis -d genesis
 ```
+## ☁️ Cloud Deployment
 
----
+The platform is architected for high availability and automated scaling using AWS infrastructure.
+
+- **Orchestration**: Dockerized microservices deployed via **Amazon ECS**.
+- **Data Persistence**: **RDS (PostgreSQL + TimescaleDB)** for time-series data and **S3** for long-term report storage.
+- **Monitoring & Alerts**: **CloudWatch** for logs with automated email notifications via **Amazon SES**.
+- **CI/CD Integration**: Seamless deployment pipeline from **GitHub** to **EC2/ECR**.
+
+<img src="./assets/Deployment.jpg" width="600" alt="AWS Deployment Architecture">
+
+
 
 ## 🎓 Key Concepts
 
