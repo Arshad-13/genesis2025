@@ -138,7 +138,13 @@ const MarketPredict = () => {
             ws.onmessage = (e) => {
                 if (!isMounted) return;
                 const msg = JSON.parse(e.data);
-                if (msg.type === 'snapshot') bufferRef.current.push(msg);
+                if (msg.type === 'snapshot') {
+                    bufferRef.current.push(msg);
+                    // Also check for trade events in snapshots
+                    if (msg.strategy?.trade_event) {
+                        setHistory(h => ({ ...h, trades: [msg.strategy.trade_event, ...h.trades].slice(0, 50) }));
+                    }
+                }
                 else if (msg.type === 'trade_event') setHistory(h => ({ ...h, trades: [msg.data, ...h.trades].slice(0, 50) }));
                 else if (msg.type === 'history') {
                     if (chartRef.current) chartRef.current.setData(msg.data);
@@ -147,7 +153,6 @@ const MarketPredict = () => {
                     const pastTrades = msg.data
                         .filter(snap => snap.strategy?.trade_event)
                         .map(snap => snap.strategy.trade_event);
-                    //.reverse(); // Don't reverse yet, let dedup sort handle it
 
                     if (pastTrades.length > 0) {
                         setHistory(h => {
@@ -200,14 +205,27 @@ const MarketPredict = () => {
 
     // ACTIONS
     const toggleEngine = async () => {
-        const ep = status.active ? '/strategy/stop' : '/strategy/start';
-        await fetch(`${import.meta.env.VITE_BACKEND_HTTP || "http://localhost:8000"}${ep}`, { method: 'POST' });
+        const BACKEND_HTTP = import.meta.env.VITE_BACKEND_HTTP || "http://localhost:8000";
+        const action = status.active ? 'stop' : 'start';
+        const url = `${BACKEND_HTTP}/strategy/${sessionIdRef.current}/${action}`;
+        try {
+            const response = await fetch(url, { method: 'POST' });
+            const result = await response.json();
+            setStatus(s => ({ ...s, active: result.is_active }));
+        } catch (error) {
+            console.error('Failed to toggle strategy:', error);
+        }
     };
     const reset = async () => {
-        await fetch(`${import.meta.env.VITE_BACKEND_HTTP || "http://localhost:8000"}/strategy/reset`, { method: 'POST' });
-        setStats({ realized: 0, unrealized: 0, total: 0, position: 0 });
-        setHistory({ trades: [] });
-        chartRef.current?.reset();
+        const BACKEND_HTTP = import.meta.env.VITE_BACKEND_HTTP || "http://localhost:8000";
+        try {
+            await fetch(`${BACKEND_HTTP}/strategy/${sessionIdRef.current}/reset`, { method: 'POST' });
+            setStats({ realized: 0, unrealized: 0, total: 0, position: 0 });
+            setHistory({ trades: [] });
+            chartRef.current?.reset();
+        } catch (error) {
+            console.error('Failed to reset strategy:', error);
+        }
     };
 
     // HELPERS
