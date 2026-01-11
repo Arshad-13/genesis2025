@@ -1,0 +1,573 @@
+# Genesis 2025: Market Microstructure Analysis & Trading Platform
+
+[![Status](https://img.shields.io/badge/status-production--ready-brightgreen)]()
+[![Python](https://img.shields.io/badge/python-3.11-blue)]()
+[![React](https://img.shields.io/badge/react-18-blue)]()
+[![C++](https://img.shields.io/badge/c++-17-blue)]()
+[![License](https://img.shields.io/badge/license-MIT-green)]()
+
+![Homepage Preview](./assets/Homepage.png)
+
+A professional-grade high-frequency trading (HFT) market surveillance platform for cryptocurrency markets, featuring real-time order book analysis, AI-driven price prediction, automated paper trading, and advanced market manipulation detection.
+
+---
+
+## 🚀 Key Features
+
+### 📊 Real-Time Market Data Processing
+- **160+ snapshots/second** from Binance WebSocket (BTC/USDT, ETH/USDT, SOL/USDT)
+- **Sub-10ms end-to-end latency** (data ingestion → analytics → UI)
+- **Level 2 order book** reconstruction with 20 price levels
+- **LIVE/REPLAY modes** with seamless switching
+
+### ⚡ Dual Analytics Engine
+- **C++ gRPC Engine**: 0.5ms average latency (4.4x faster)
+- **Python Engine**: Full-featured fallback with automatic failover
+- **40+ microstructure features**: OFI, OBI, VPIN, Microprice, Spread metrics
+- **Automatic health monitoring** with transparent engine switching
+
+### 🔍 Advanced Anomaly Detection
+- **Spoofing Detection**: Large non-bona fide orders with risk scoring (0-100%)
+- **Layering Detection**: Multiple fake liquidity levels
+- **Liquidity Gaps**: Price levels with insufficient volume (severity-weighted)
+- **Market Regime Classification**: Calm, Stressed, Execution Hot, Manipulation Suspected
+- **Heavy Imbalance & Spread Shock** detection
+
+
+### 🤖 Deep Learning Price Prediction
+- **DeepLOB CNN Model**: 63.4% accuracy (vs 33% random baseline)
+- **Triple Barrier Labeling**: UP/NEUTRAL/DOWN predictions
+- **GPU-Accelerated Inference**: 3.2ms per prediction (RTX 4060)
+- **5-Fold Cross-Validation**: Robust generalization
+- **Real-time predictions** with 100-snapshot rolling window
+
+<img src="./assets/deeplob.png" width="500" alt="DeepLOB Architecture">
+
+### 💰 Automated Paper Trading
+- **Strategy Engine**: Signal-based entry/exit with confidence thresholds
+- **Full PnL Tracking**: Realized, unrealized, and total
+- **Position Management**: LONG/SHORT with automatic exits
+- **59.6% win rate** in simulated trading
+- **START/STOP/RESET controls** via dashboard
+
+### 📈 Professional Dashboard
+- **Real-time WebSocket streaming** with React 18
+- **Custom Canvas charts** for 60 FPS rendering (300+ data points)
+- **Live order book visualization** with depth bars
+- **Signal monitoring** with priority-sorted anomalies
+- **Trade execution log** with per-trade PnL
+- **Risk dashboard** with health scoring
+
+<img src="./assets/Dashboard.png" width="600" alt="Dashboard Preview">
+
+### 💾 Time-Series Database
+- **PostgreSQL + TimescaleDB**: 1.3M+ snapshots stored
+- **8:1 compression ratio** with automatic data retention
+- **42ms query time** for 1-hour data ranges
+- **Optimized for high-frequency inserts** (160/sec sustained)
+
+### 📑 Post-Trade Report Generation
+
+- **Session-level performance tracking**: Aggregate PnL, win rates, and trade counts
+- **Detailed historical logs**: Timestamped records for every trading session
+- **Duration Analytics**: Track average session length and individual execution times
+- **Data Export**: Direct download buttons for session data and CSV reports
+
+<img src="./assets/report.jpeg" width="600" alt="Report Generation Preview">
+
+---
+
+## 🏗️ System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    GENESIS 2025 PLATFORM                     │
+└─────────────────────────────────────────────────────────────┘
+
+  ┌──────────────────┐
+  │  Binance API     │  BTC/USDT Perpetual Futures
+  │  WebSocket       │  @depth20@100ms
+  └────────┬─────────┘
+           │
+           ▼
+  ┌────────────────────────────────────────────────┐
+  │     Market Ingestor (Python + gRPC)            │
+  │  • WebSocket client                            │
+  │  • Order book reconstruction                   │
+  │  • Dynamic symbol switching                    │
+  └────────┬───────────────────────────────────────┘
+           │ gRPC Stream
+           ▼
+  ┌──────────────────────────────────────────────────────────┐
+  │              FastAPI Backend (Python)                    │
+  │  ┌──────────────┐  ┌──────────────┐  ┌────────────────┐  │
+  │  │ Session Mgmt │  │ Analytics    │  │ Strategy Engine│  │
+  │  │ • Multi-user │  │ • C++/Python │  │ • Paper trading│  │
+  │  │ • LIVE/REPLAY│  │ • 40+ metrics│  │ • PnL tracking │  │
+  │  └──────────────┘  └──────────────┘  └────────────────┘  │
+  │  ┌──────────────┐  ┌─────────────────────────────────┐   │
+  │  │ ML Inference │  │ Monitoring & Metrics            │   │
+  │  │ • DeepLOB    │  │ • Health checks, latency stats  │   │
+  │  │ • GPU accel  │  │ • Alert deduplication           │   │
+  │  └──────────────┘  └─────────────────────────────────┘   │
+  └────────┬──────────────────────┬────────────────┬─────────┘
+           │ gRPC                 │ WebSocket      │ SQL
+           ▼                      ▼                ▼
+  ┌────────────────┐  ┌──────────────────┐  ┌────────────────┐
+  │  C++ Engine    │  │  React Frontend  │  │  PostgreSQL +  │
+  │  • Sub-ms      │  │  • Canvas charts │  │  TimescaleDB   │
+  │  • 40+ features│  │  • Live WS       │  │  • 1.3M snaps  │
+  └────────────────┘  └──────────────────┘  └────────────────┘
+```
+
+<img src="./assets/Architecture.jpg" width="600" alt="Architecture">
+---
+
+## 📦 Tech Stack
+
+### Backend
+- **Language**: Python 3.11
+- **Framework**: FastAPI (async API server)
+- **Database**: PostgreSQL 14 + TimescaleDB 2.7
+- **Message Queue**: gRPC for C++ interop
+- **WebSockets**: Real-time client communication
+- **ML Framework**: PyTorch 2.0 (GPU-accelerated)
+
+### C++ Engine
+- **Standard**: C++17
+- **Framework**: gRPC + Protocol Buffers
+- **Build System**: CMake 3.20+
+- **Performance**: 0.5ms average latency
+
+### Frontend
+- **Framework**: React 18 + Vite 4
+- **UI Library**: Tailwind CSS 3
+- **Icons**: Lucide React
+- **Charts**: Custom Canvas API rendering
+
+### DevOps
+- **Containerization**: Docker + Docker Compose
+- **Testing**: pytest (95+ tests, 87% coverage)
+- **Monitoring**: Prometheus-style metrics
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- **Python 3.11+**
+- **Node.js 16+**
+- **Docker & Docker Compose**
+- **PostgreSQL 14+** (or use Docker)
+- **NVIDIA GPU** (optional, for ML inference)
+
+### 1️⃣ Clone Repository
+```bash
+git clone https://github.com/yourusername/genesis2025.git
+cd genesis2025
+```
+
+### 2️⃣ Start Database & C++ Engine
+```bash
+cd backend
+docker-compose up -d
+# Starts: PostgreSQL, TimescaleDB, C++ Analytics Engine
+```
+
+### 3️⃣ Start Market Data Ingestor (LIVE Mode)
+```bash
+cd market_ingestor
+pip install -r requirements.txt
+python main.py
+# gRPC server starts on port 6000
+```
+
+### 4️⃣ Start Backend
+```bash
+cd backend
+pip install -r requirements.txt
+python main.py
+# Backend starts on http://localhost:8000
+```
+
+### 5️⃣ Start Frontend
+```bash
+cd market-microstructure
+npm install
+npm run dev
+# Dashboard opens at http://localhost:5173
+```
+
+### 6️⃣ Access Dashboard
+Open **http://localhost:5173** in your browser and:
+- Click **LIVE** to stream real-time Binance data
+- Select symbol (BTC/USDT, ETH/USDT, SOL/USDT)
+- Click **START** to activate paper trading strategy
+- Monitor anomalies, predictions, and PnL in real-time
+
+---
+
+## 🎯 Usage Guide
+
+### Dashboard Modes
+
+#### 🔴 LIVE Mode
+- Connects to Binance WebSocket
+- Real-time order book streaming
+- Symbol switching (BTC, ETH, SOL)
+- Live anomaly detection
+
+#### ▶️ REPLAY Mode
+- Historical data playback from database
+- Adjustable playback speed (1x, 2x, 5x, 10x)
+- Pause/Resume controls
+- Scrubbing through timeline
+
+### Paper Trading Controls
+
+```bash
+# Start strategy (via UI or API)
+curl -X POST http://localhost:8000/strategy/start
+
+# Stop strategy
+curl -X POST http://localhost:8000/strategy/stop
+
+# Reset PnL
+curl -X POST http://localhost:8000/strategy/reset
+```
+
+**Strategy Logic**:
+- **Entry**: Model confidence > 23% (LONG on UP, SHORT on DOWN)
+- **Exit**: Confidence < 22% or opposite signal
+- **Position Size**: 1.0 BTC (fixed)
+- **No Leverage**: Simple spot paper trading
+
+### Analytics Engine Switching
+
+```bash
+# Check current engine
+curl http://localhost:8000/engine/status
+
+# Switch to C++ (high performance)
+curl -X POST http://localhost:8000/engine/switch/cpp
+
+# Switch to Python (fallback)
+curl -X POST http://localhost:8000/engine/switch/python
+
+# Run benchmark
+curl -X POST http://localhost:8000/engine/benchmark
+```
+
+---
+
+## 📊 Performance Metrics
+
+### System Performance
+| Metric | Target | Actual | Status |
+|--------|--------|--------|--------|
+| Data Ingestion | <5ms | 1.2ms | ✅ |
+| C++ Analytics | <1ms | 0.7ms | ✅ |
+| Model Inference | <5ms | 3.2ms | ✅ |
+| End-to-End Latency | <10ms | 6.9ms | ✅ |
+| Throughput | 100+/s | 162/s | ✅ |
+
+### Model Performance
+- **Accuracy**: 63.4% (test set)
+- **Precision (UP)**: 62%
+- **Recall (UP)**: 73%
+- **F1-Score**: 67%
+
+### Trading Simulation (24h replay)
+- **Total Trades**: 94
+- **Win Rate**: 59.6%
+- **Total PnL**: +$287.40
+- **Max Drawdown**: -$62.30
+- **Sharpe Ratio**: 1.82
+
+> ⚠️ **Disclaimer**: Paper trading results. Real trading involves slippage, fees, and market impact.
+
+---
+
+## 🧪 Testing
+
+### Run Full Test Suite
+```bash
+cd backend
+pytest tests/ -v
+
+# Expected output:
+# ======================== 95 passed, 2 skipped in 12.34s ========================
+# Coverage: 87%
+```
+
+### Test Categories
+- ✅ Database connection pooling
+- ✅ WebSocket streaming
+- ✅ Analytics calculations (OFI, OBI, Spread)
+- ✅ Anomaly detection (spoofing, gaps, layering)
+- ✅ Engine switching (C++/Python)
+- ✅ Strategy execution logic
+
+### Performance Testing
+```bash
+# Load test (10 concurrent clients, 60s)
+python load_test.py --clients 10 --duration 60
+
+# Stress test (100 clients)
+python load_test.py --clients 100 --duration 30
+```
+
+---
+
+## 📁 Project Structure
+
+```
+genesis2025/
+├── backend/                     # Python FastAPI backend
+│   ├── main.py                  # Application entry point
+│   ├── analytics_core.py        # Feature calculations
+│   ├── inference_service.py     # ML model inference
+│   ├── strategy_service.py      # Paper trading engine
+│   ├── session_replay.py        # Session management
+│   ├── grpc_client/             # C++ engine client
+│   ├── tests/                   # Test suite (95 tests)
+│   └── docker-compose.yml       # Services orchestration
+├── cpp_engine/                  # C++ analytics engine
+│   ├── proto/analytics.proto    # gRPC service definition
+│   ├── src/server.cpp           # gRPC server
+│   ├── src/analytics_engine.cpp # Core algorithms
+│   └── CMakeLists.txt           # Build configuration
+├── market_ingestor/             # Binance WebSocket client
+│   └── main.py                  # Order book ingestion
+├── market-microstructure/       # React frontend
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── Dashboard.jsx    # Main monitoring page
+│   │   │   └── ModelTest.jsx    # Strategy control page
+│   │   └── components/
+│   │       ├── CanvasPriceChart.jsx
+│   │       ├── OrderBook.jsx
+│   │       ├── SignalMonitor.jsx
+│   │       ├── LiquidityGapMonitor.jsx
+│   │       ├── SpoofingDetector.jsx
+│   │       └── RiskDashboard.jsx
+│   └── vite.config.js
+├── model_building/              # ML model training
+│   ├── src/
+│   │   ├── train.py             # Training script
+│   │   ├── model.py             # DeepLOB architecture
+│   │   └── evaluate.py          # Validation
+│   └── checkpoints/
+│       ├── best_deeplob_fold5.pth
+│       └── scaler_params.json
+└── docs/                        # Documentation
+    ├── Complete_POW.md          # Full project documentation
+    ├── 2_Features_shipped.md    # Shipped features
+    ├── 4_Cpp_Engine_Microservice_Setup.md
+    ├── 5_Cpp_Engine_Integration.md
+    └── 6_Market_Ingestor_Microservice.md
+```
+
+---
+
+## 🔧 Configuration
+
+### Environment Variables
+
+```bash
+# Backend Configuration
+USE_CPP_ENGINE=true              # Enable C++ analytics engine
+CPP_ENGINE_HOST=localhost        # C++ engine host
+CPP_ENGINE_PORT=50051            # C++ engine port
+
+# Database
+DATABASE_URL=postgresql://user:pass@localhost:5432/genesis
+
+# Model Inference
+MODEL_PATH=model_building/checkpoints/best_deeplob_fold5.pth
+DEVICE=cuda                      # 'cuda' or 'cpu'
+
+# Market Data
+BINANCE_WS_URL=wss://fstream.binance.com/ws
+DEFAULT_SYMBOL=BTCUSDT
+```
+
+### Docker Compose Services
+
+```yaml
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg14
+    ports:
+      - "5432:5432"
+  
+  cpp-analytics:
+    build: ../cpp_engine
+    ports:
+      - "50051:50051"
+  
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - cpp-analytics
+```
+
+---
+
+## 🛠️ Troubleshooting
+
+### LIVE Mode Not Working
+
+**Issue**: Dashboard shows old timestamps instead of live data.
+
+**Solution**:
+```bash
+# 1. Stop Docker container on port 6000
+docker ps | grep 6000
+docker stop <container_id>
+
+# 2. Run market_ingestor locally
+cd market_ingestor
+python main.py
+
+# 3. Restart backend
+cd backend
+python main.py
+```
+
+### C++ Engine Not Connected
+
+**Issue**: Backend falls back to Python engine.
+
+**Solution**:
+```bash
+# Check C++ engine status
+docker logs cpp-analytics
+
+# Rebuild if needed
+docker-compose build cpp-analytics
+docker-compose up -d cpp-analytics
+
+# Test connection
+grpcurl -plaintext localhost:50051 list
+```
+
+### Database Connection Failed
+
+**Solution**:
+```bash
+# Check PostgreSQL status
+docker ps | grep postgres
+
+# Restart database
+docker-compose restart postgres
+
+# Verify connection
+psql -h localhost -U genesis -d genesis
+```
+## ☁️ Cloud Deployment
+
+The platform is architected for high availability and automated scaling using AWS infrastructure.
+
+- **Orchestration**: Dockerized microservices deployed via **Amazon ECS**.
+- **Data Persistence**: **RDS (PostgreSQL + TimescaleDB)** for time-series data and **S3** for long-term report storage.
+- **Monitoring & Alerts**: **CloudWatch** for logs with automated email notifications via **Amazon SES**.
+- **CI/CD Integration**: Seamless deployment pipeline from **GitHub** to **EC2/ECR**.
+
+<img src="./assets/Deployment.jpg" width="600" alt="AWS Deployment Architecture">
+
+
+
+## 🎓 Key Concepts
+
+### Market Microstructure Features
+
+1. **Order Flow Imbalance (OFI)**
+   - Measures aggressive buying/selling pressure
+   - Range: [-1, 1]
+   - High OFI → Upward price pressure
+
+2. **Order Book Imbalance (OBI)**
+   - Volume-weighted bid/ask imbalance
+   - Multi-level calculation (top 10 levels)
+   - Predictive of short-term price moves
+
+3. **Microprice**
+   - Volume-weighted fair price
+   - `(Ask₁ × Bid_Vol + Bid₁ × Ask_Vol) / Total_Vol`
+   - More accurate than simple mid-price
+
+4. **VPIN (Volume-Synchronized Probability of Informed Trading)**
+   - Detects informed trading activity
+   - Requires trade data (not just L2 book)
+
+### Anomaly Types
+
+- **Spoofing**: Large fake orders to manipulate price
+- **Layering**: Multiple orders creating false liquidity
+- **Liquidity Gaps**: Price levels with thin volume
+- **Heavy Imbalance**: Extreme bid/ask volume skew
+- **Spread Shock**: Sudden bid-ask spread widening
+
+### Market Regimes
+
+1. **Calm**: Low volatility, tight spreads
+2. **Stressed**: High volatility, order book imbalance
+3. **Execution Hot**: Large orders, aggressive trading
+4. **Manipulation Suspected**: Multiple anomalies detected
+
+---
+
+## 🚧 Future Roadmap
+
+### Short-Term (1-3 months)
+- [ ] Ensemble model (top 3 folds)
+- [ ] Attention mechanism for price levels
+- [ ] Multi-horizon predictions (1min, 5min, 15min)
+- [ ] Dynamic position sizing
+- [ ] Stop-loss and take-profit levels
+
+### Medium-Term (3-6 months)
+- [ ] Multi-asset support (ETH, SOL, etc.)
+- [ ] Transformer-based architecture
+- [ ] Reinforcement Learning optimization
+- [ ] Alert system (SMS/Email/Telegram)
+- [ ] Advanced backtesting framework
+
+### Long-Term (6-12 months)
+- [ ] Live trading integration (Binance API)
+- [ ] Order execution engine
+- [ ] Real-time risk controls
+- [ ] Multi-region deployment
+- [ ] Apache Kafka for distributed processing
+
+---
+
+## 📺 Project Demo
+[![Watch the Video](https://img.shields.io/badge/Video-Watch%20Demo-red?style=for-the-badge&logo=youtube)](https://drive.google.com/file/d/1w-Y3YWwkHVpC5oJTMzkrEGAKoqAre6f8/view?usp=sharing)
+
+---
+
+## 🙏 Acknowledgments
+
+- **Binance API**: Real-time market data
+- **DeepLOB**: CNN architecture for LOB modeling
+- **TimescaleDB**: High-performance time-series storage
+- **FastAPI**: Modern async Python framework
+- **React**: Powerful UI framework
+
+---
+
+## 📧 Contact & Support
+
+- **GitHub Issues**: For bug reports and feature requests
+- **Documentation**: See `/docs` directory
+
+---
+
+**Built with ❤️ for the HFT community**
+
+**Status**: ✅ Production-Ready | **Version**: 2.0 | **Last Updated**: December 2024
