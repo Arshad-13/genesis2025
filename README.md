@@ -390,6 +390,12 @@ DEVICE=cuda                      # 'cuda' or 'cpu'
 # Market Data
 BINANCE_WS_URL=wss://fstream.binance.com/ws
 DEFAULT_SYMBOL=BTCUSDT
+
+
+AWS_ACCESS_KEY_ID=***********
+AWS_SECRET_ACCESS_KEY=***************
+AWS_REGION=eu-north-1
+S3_BUCKET_NAME=tradinghub-report
 ```
 
 ### Docker Compose Services
