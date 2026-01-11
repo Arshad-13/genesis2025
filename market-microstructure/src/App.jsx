@@ -7,6 +7,7 @@ import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import Home from './pages/Home'; // Assuming you have a Home page
 import MarketPredict from './pages/MarketPredict';
+import Reports from './pages/Reports';
 
 function App() {
   return (
@@ -43,6 +44,17 @@ function App() {
                 <ProtectedRoute>
                   <ErrorBoundary fallbackMessage="Error loading Market Predict page.">
                     <MarketPredict />
+                  </ErrorBoundary>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/reports"
+              element={
+                <ProtectedRoute>
+                  <ErrorBoundary fallbackMessage="Error loading Reports page.">
+                    <Reports />
                   </ErrorBoundary>
                 </ProtectedRoute>
               }

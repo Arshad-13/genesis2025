@@ -26,3 +26,6 @@ pydantic[email]
 psycopg2-binary
 alembic
 
+# storage s3
+boto3==1.34.0
+

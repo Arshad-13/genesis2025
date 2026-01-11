@@ -12,8 +12,8 @@ class StrategyEngine:
         self.trades = []
         
         # Configuration
-        self.CONFIDENCE_THRESHOLD = 0.23
-        self.EXIT_THRESHOLD = 0.22
+        self.CONFIDENCE_THRESHOLD = 0.15
+        self.EXIT_THRESHOLD = 0.15
         self.MAX_POSITION = 1.0 # 1 BTC
         self.is_active = False # Default to Stopped
 

@@ -35,6 +35,7 @@ from utils.security import decode_access_token
 from utils.data import sanitize
 from typing import Dict
 from snapshot_processor import SnapshotProcessor
+from csv_service import csv_service
 
 # Load environment variables from .env file
 load_dotenv()
@@ -916,10 +917,34 @@ async def start_strategy(session_id: str):
 
 @app.post("/strategy/{session_id}/stop")
 async def stop_strategy(session_id: str):
-    """Stop the paper trading strategy for a session"""
+    """Stop the paper trading strategy for a session and generate CSV report"""
     strategy = strategy_manager.get_or_create(session_id)
+    
+    # Generate CSV report if there are trades
+    report_info = None
+    if strategy.trades:
+        try:
+            strategy_stats = {
+                'realized': strategy.pnl,
+                'position': strategy.position
+            }
+            report_info = csv_service.generate_trades_csv(session_id, strategy.trades, strategy_stats)
+            logger.info(f"Generated CSV report for session {session_id}: {report_info['filename']}")
+        except Exception as e:
+            logger.error(f"Failed to generate CSV report for session {session_id}: {e}")
+    
     strategy.stop()
-    return {"status": "stopped", "session_id": session_id, "is_active": strategy.is_active}
+    
+    response = {
+        "status": "stopped", 
+        "session_id": session_id, 
+        "is_active": strategy.is_active
+    }
+    
+    if report_info:
+        response["report"] = report_info
+    
+    return response
 
 @app.post("/strategy/{session_id}/reset")
 async def reset_strategy(session_id: str):
@@ -966,6 +991,132 @@ async def reset_strategy_default():
         return {"status": "error", "message": "No active sessions found."}
     session_id = next(iter(sessions.keys()))
     return await reset_strategy(session_id)
+
+# --------------------------------------------------
+# Reports Endpoints
+# --------------------------------------------------
+@app.get("/reports")
+async def list_reports():
+    """List all generated CSV reports with parsed statistics"""
+    import os
+    import csv
+    from datetime import datetime
+    
+    reports_dir = "reports"
+    reports = []
+    
+    try:
+        if not os.path.exists(reports_dir):
+            return {"reports": []}
+            
+        for filename in os.listdir(reports_dir):
+            if filename.endswith('.csv') and filename.startswith('trades_'):
+                filepath = os.path.join(reports_dir, filename)
+                
+                try:
+                    # Parse filename: trades_sessionid_timestamp.csv
+                    parts = filename.replace('.csv', '').split('_')
+                    if len(parts) >= 3:
+                        session_id = '_'.join(parts[1:-1])
+                        timestamp = parts[-1]
+                        
+                        # Get file stats
+                        stat = os.stat(filepath)
+                        file_size = stat.st_size
+                        created_at = datetime.fromtimestamp(stat.st_ctime).isoformat()
+                        
+                        # Parse CSV directly (simplified)
+                        total_trades = 0
+                        total_pnl = 0.0
+                        winning_trades = 0
+                        first_trade = None
+                        last_trade = None
+                        
+                        try:
+                            with open(filepath, 'r') as csvfile:
+                                reader = csv.DictReader(csvfile)
+                                trades = list(reader)
+                                total_trades = len(trades)
+                                
+                                for trade in trades:
+                                    pnl = float(trade.get('pnl', 0))
+                                    total_pnl += pnl
+                                    if pnl > 0:
+                                        winning_trades += 1
+                                
+                                if trades:
+                                    first_trade = trades[0].get('timestamp')
+                                    last_trade = trades[-1].get('timestamp')
+                        except Exception:
+                            pass
+                        
+                        # Calculate duration
+                        duration = "N/A"
+                        if first_trade and last_trade:
+                            try:
+                                first_dt = datetime.fromisoformat(first_trade.replace('Z', '+00:00'))
+                                last_dt = datetime.fromisoformat(last_trade.replace('Z', '+00:00'))
+                                duration_seconds = (last_dt - first_dt).total_seconds()
+                                hours = int(duration_seconds // 3600)
+                                minutes = int((duration_seconds % 3600) // 60)
+                                duration = f"{hours}h {minutes}m" if hours > 0 else f"{minutes}m"
+                            except Exception:
+                                duration = "N/A"
+                        
+                        win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
+                        
+                        report = {
+                            "filename": filename,
+                            "session_id": session_id,
+                            "timestamp": timestamp,
+                            "created_at": created_at,
+                            "file_size": file_size,
+                            "download_url": f"/reports/download/{filename}",
+                            "stats": {
+                                "total_trades": total_trades,
+                                "total_pnl": round(total_pnl, 2),
+                                "winning_trades": winning_trades,
+                                "losing_trades": total_trades - winning_trades,
+                                "win_rate": round(win_rate, 1),
+                                "first_trade": first_trade,
+                                "last_trade": last_trade
+                            },
+                            "duration": duration
+                        }
+                        reports.append(report)
+                        
+                except Exception as e:
+                    logger.error(f"Error processing {filename}: {e}")
+                    continue
+        
+        # Sort by creation time (newest first)
+        reports.sort(key=lambda x: x['created_at'], reverse=True)
+        return {"reports": reports}
+        
+    except Exception as e:
+        logger.error(f"Error in list_reports: {e}")
+        return {"reports": [], "error": str(e)}
+    
+@app.get("/reports/download/{filename}")
+async def download_report(filename: str):
+    """Download a specific CSV report"""
+    from fastapi.responses import FileResponse
+    
+    # Security: only allow CSV files with expected naming pattern
+    if not filename.endswith('.csv') or not filename.startswith('trades_'):
+        return {"error": "Invalid filename"}
+    
+    filepath = os.path.join("reports", filename)
+    
+    if not os.path.exists(filepath):
+        return {"error": "File not found"}
+    
+    return FileResponse(
+        path=filepath,
+        filename=filename,
+        media_type='text/csv'
+    )
+
 
 # --------------------------------------------------
 # CSV Replay Loop (FALLBACK 2)
