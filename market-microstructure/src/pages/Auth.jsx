@@ -5,7 +5,7 @@ import {
   Lock,
   Mail,
   User,
-  TrendingDown,
+  BarChart3,
   ArrowRight,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -129,11 +129,12 @@ export default function AuthPage() {
     <div
       style={{
         minHeight: "100vh",
-        backgroundColor: "#0f172a",
+        backgroundColor: "#0a0f0a",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         padding: "20px",
+        fontFamily: "'Rajdhani', sans-serif",
       }}
     >
       <div
@@ -142,10 +143,10 @@ export default function AuthPage() {
           maxWidth: "900px",
           height: "600px",
           position: "relative",
-          backgroundColor: "#1e293b",
-          borderRadius: "20px",
-          border: "2px solid #334155",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+          backgroundColor: "rgba(0, 20, 0, 0.8)",
+          borderRadius: "0",
+          border: "1px solid rgba(0, 255, 127, 0.3)",
+          boxShadow: "0 0 40px rgba(0, 255, 127, 0.1)",
           overflow: "hidden",
           display: "flex",
         }}
@@ -158,7 +159,7 @@ export default function AuthPage() {
             left: isLogin ? "50%" : "0",
             width: "50%",
             height: "100%",
-            background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+            background: "linear-gradient(135deg, #00ff7f 0%, #00cc66 100%)",
             transition: "left 0.6s ease-in-out",
             zIndex: 10,
             display: "flex",
@@ -183,7 +184,7 @@ export default function AuthPage() {
               backdropFilter: "blur(10px)",
             }}
           >
-            <TrendingDown size={40} color="white" />
+            <BarChart3 size={40} color="white" />
           </div>
 
           <h2
@@ -192,6 +193,8 @@ export default function AuthPage() {
               fontWeight: "700",
               margin: "0 0 16px 0",
               textShadow: "0 2px 4px rgba(0,0,0,0.1)",
+              fontFamily: "'Orbitron', monospace",
+              letterSpacing: "1px",
             }}
           >
             {isLogin ? "New Here?" : "Welcome Back!"}
@@ -229,7 +232,7 @@ export default function AuthPage() {
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = "white";
-              e.currentTarget.style.color = "#3b82f6";
+              e.currentTarget.style.color = "#00ff7f";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = "transparent";
