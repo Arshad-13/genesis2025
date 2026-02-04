@@ -175,8 +175,13 @@ export const TradingViewChart = forwardRef(({
     }, [backgroundColor, lineColor, textColor, areaTopColor, areaBottomColor]); // Keep data out of dep array here, handled by separate effect
 
     return (
-        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-            <h4 style={{ margin: '0 0 12px 0', fontSize: '0.875rem', fontWeight: 700, color: '#00ff7f', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: "'Orbitron', monospace", textShadow: '0 0 10px rgba(0, 255, 127, 0.3)' }}>Live Price Action</h4>
+        <div style={{
+        transform: "scale(0.8)",
+        transformOrigin: "top left",
+        width: "124%",
+        height: "125%",
+      }}>
+            {/* <h4 style={{ margin: '0 0 12px 0', fontSize: '0.875rem', fontWeight: 700, color: '#00ff7f', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: "'Orbitron', monospace", textShadow: '0 0 10px rgba(0, 255, 127, 0.3)' }}>Live Price Action</h4> */}
             <div ref={chartContainerRef} style={{ width: '100%', height: 'calc(100% - 30px)' }} />
         </div>
     );
