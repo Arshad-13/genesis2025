@@ -66,21 +66,9 @@ async def test_database_connection():
             await return_connection(conn)
 
 def test_backend_imports():
-    """Test that backend modules can be imported"""
-    print("\n🔍 Testing backend module imports...")
-    
-    try:
-        from analytics_core import AnalyticsEngine
-        print("✅ Analytics module imported")
-        
-        engine = AnalyticsEngine()
-        print("✅ AnalyticsEngine instantiated")
-        
-        return True
-        
-    except Exception as e:
-        print(f"❌ Backend import failed: {e}")
-        return False
+    from analytics_core import AnalyticsEngine
+    engine = AnalyticsEngine()
+    assert engine is not None
 
 def main():
     print("🚀 Market Microstructure Backend Connection Test")

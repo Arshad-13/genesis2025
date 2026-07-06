@@ -519,6 +519,42 @@ export default function AuthPage() {
             >
               {isLoading ? "Signing In..." : "Sign In"}
             </button>
+
+            {/* Test Credentials Card */}
+            <div
+              onClick={() => setFormData(f => ({
+                ...f,
+                email: "test@example.com",
+                password: "password123"
+              }))}
+              style={{
+                marginTop: "20px",
+                padding: "10px 12px",
+                border: "1px dashed rgba(0, 255, 127, 0.4)",
+                background: "rgba(0, 255, 127, 0.05)",
+                cursor: "pointer",
+                textAlign: "center",
+                transition: "all 0.2s",
+                display: "flex",
+                flexDirection: "column",
+                gap: "2px"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(0, 255, 127, 0.1)";
+                e.currentTarget.style.borderColor = "#00ff7f";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(0, 255, 127, 0.05)";
+                e.currentTarget.style.borderColor = "rgba(0, 255, 127, 0.4)";
+              }}
+            >
+              <div style={{ fontSize: "11px", fontWeight: "700", color: "#00ff7f", fontFamily: "'Orbitron', monospace", letterSpacing: "0.5px" }}>
+                CLICK TO AUTOFILL DEMO ACCOUNT
+              </div>
+              <div style={{ fontSize: "11px", color: "#94a3b8" }}>
+                test@example.com / password123
+              </div>
+            </div>
           </div>
         </div>
 

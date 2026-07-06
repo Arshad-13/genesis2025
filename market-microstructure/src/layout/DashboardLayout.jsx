@@ -162,7 +162,7 @@ const DashboardLayout = React.memo(function DashboardLayout({
         {children ? children : (
           <>
             {/* LEFT COLUMN (Charts & Analytics) */}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "12px", minWidth: 0 }}>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "12px", minWidth: 0, marginTop: "65px"}}>
 
               {/* TOP: Price Action (40%) */}
               <GenesisPanel title="TOKEN PRICE ACTION" style={{ flex: "0 0 32vh" }} noPadding>

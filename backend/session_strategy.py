@@ -33,7 +33,17 @@ class SessionStrategyManager:
                     "pnl": strategy.pnl,
                     "position": strategy.position,
                     "is_active": strategy.is_active,
-                    "trades": len(strategy.trades)
+                    "trades": len(strategy.trades),
+                    "circuit_tripped": getattr(strategy, 'circuit_breaker_tripped', False),
+                    "strategies": {
+                        name: {
+                            "pnl": s.pnl,
+                            "position": s.position,
+                            "is_active": s.is_active,
+                            "trades": len(s.trades)
+                        }
+                        for name, s in getattr(strategy, 'strategies', {}).items()
+                    }
                 }
                 for sid, strategy in self.strategies.items()
             }

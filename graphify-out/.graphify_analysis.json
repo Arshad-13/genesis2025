@@ -1,0 +1,1473 @@
+{
+  "communities": {
+    "0": [
+      "backend_analytics_core_db_row_to_snapshot",
+      "backend_db",
+      "backend_db_close_all_connections",
+      "backend_db_get_connection",
+      "backend_db_get_connection_pool",
+      "backend_db_get_db_config",
+      "backend_db_rationale_103",
+      "backend_db_rationale_131",
+      "backend_db_rationale_186",
+      "backend_db_rationale_24",
+      "backend_db_rationale_60",
+      "backend_db_return_connection",
+      "backend_main_rationale_491",
+      "backend_main_session_replay_loop",
+      "backend_tests_status",
+      "backend_tests_status_check_backend",
+      "backend_tests_status_check_database",
+      "backend_tests_status_check_docker",
+      "backend_tests_status_main",
+      "backend_tests_status_rationale_13",
+      "backend_tests_status_rationale_33",
+      "backend_tests_status_rationale_49",
+      "backend_tests_test_async_db",
+      "backend_tests_test_async_db_cleanup_pool",
+      "backend_tests_test_async_db_rationale_1",
+      "backend_tests_test_async_db_rationale_104",
+      "backend_tests_test_async_db_rationale_20",
+      "backend_tests_test_async_db_rationale_24",
+      "backend_tests_test_async_db_rationale_32",
+      "backend_tests_test_async_db_rationale_45",
+      "backend_tests_test_async_db_rationale_63",
+      "backend_tests_test_async_db_rationale_74",
+      "backend_tests_test_async_db_rationale_91",
+      "backend_tests_test_async_db_reset_db_pool",
+      "backend_tests_test_async_db_testasyncdatabase",
+      "backend_tests_test_async_db_testasyncdatabase_test_concurrent_connections",
+      "backend_tests_test_async_db_testasyncdatabase_test_connection_pool_creation",
+      "backend_tests_test_async_db_testasyncdatabase_test_connection_pool_reuse",
+      "backend_tests_test_async_db_testasyncdatabase_test_connection_timeout",
+      "backend_tests_test_async_db_testasyncdatabase_test_get_and_return_connection",
+      "backend_tests_test_async_db_testasyncdatabase_test_query_with_parameters",
+      "backend_tests_test_backend_db",
+      "backend_tests_test_backend_db_test_backend_db",
+      "backend_tests_test_connection",
+      "backend_tests_test_connection_main",
+      "backend_tests_test_connection_rationale_12",
+      "backend_tests_test_connection_rationale_69",
+      "backend_tests_test_connection_test_backend_imports",
+      "backend_tests_test_connection_test_database_connection",
+      "pool"
+    ],
+    "1": [
+      "backend_analytics_core",
+      "backend_analytics_core_anomalydetectionutils",
+      "backend_analytics_core_datavalidator",
+      "backend_analytics_core_datavalidator_is_valid_number",
+      "backend_analytics_core_datavalidator_sanitize_number",
+      "backend_analytics_core_datavalidator_sanitize_snapshot",
+      "backend_analytics_core_datavalidator_validate_snapshot",
+      "backend_analytics_core_marketsimulator",
+      "backend_analytics_core_marketsimulator_generate_snapshot",
+      "backend_analytics_core_marketsimulator_place_order",
+      "backend_analytics_core_marketsimulator_update_ofi",
+      "backend_analytics_core_rationale_148",
+      "backend_analytics_core_rationale_213",
+      "backend_analytics_core_rationale_217",
+      "backend_analytics_core_rationale_286",
+      "backend_analytics_core_rationale_298",
+      "backend_analytics_core_rationale_320",
+      "backend_analytics_core_rationale_426",
+      "backend_analytics_core_rationale_430",
+      "backend_tests_test_analytics",
+      "backend_tests_test_analytics_rationale_1",
+      "backend_tests_test_analytics_rationale_11",
+      "backend_tests_test_analytics_rationale_132",
+      "backend_tests_test_analytics_rationale_17",
+      "backend_tests_test_analytics_rationale_218",
+      "backend_tests_test_analytics_rationale_221",
+      "backend_tests_test_analytics_rationale_229",
+      "backend_tests_test_analytics_rationale_24",
+      "backend_tests_test_analytics_rationale_30",
+      "backend_tests_test_analytics_rationale_37",
+      "backend_tests_test_analytics_rationale_43",
+      "backend_tests_test_analytics_rationale_56",
+      "backend_tests_test_analytics_rationale_65",
+      "backend_tests_test_analytics_rationale_8",
+      "backend_tests_test_analytics_testalertmanager",
+      "backend_tests_test_analytics_testanalyticsengine",
+      "backend_tests_test_analytics_testdatavalidator",
+      "backend_tests_test_analytics_testdatavalidator_test_crossed_book_detected",
+      "backend_tests_test_analytics_testdatavalidator_test_is_valid_number",
+      "backend_tests_test_analytics_testdatavalidator_test_missing_fields_detected",
+      "backend_tests_test_analytics_testdatavalidator_test_nan_values_detected",
+      "backend_tests_test_analytics_testdatavalidator_test_sanitization_fixes_nan",
+      "backend_tests_test_analytics_testdatavalidator_test_valid_snapshot_passes",
+      "backend_tests_test_analytics_testdatavalidator_test_wide_spread_warning",
+      "backend_tests_test_analytics_testmarketsimulator",
+      "backend_tests_test_analytics_testmarketsimulator_test_simulator_generates_valid_snapshots",
+      "backend_tests_test_analytics_testmarketsimulator_test_spread_generation"
+    ],
+    "2": [
+      "analyticsengine",
+      "backend_analytics",
+      "cpp_engine_src_analytics_engine_analyticsengine",
+      "cpp_engine_src_analytics_engine_analyticsengine_alpha",
+      "cpp_engine_src_analytics_engine_analyticsengine_analyticsengine",
+      "cpp_engine_src_analytics_engine_analyticsengine_avg_l1_vol",
+      "cpp_engine_src_analytics_engine_analyticsengine_avg_spread",
+      "cpp_engine_src_analytics_engine_analyticsengine_avg_spread_sq",
+      "cpp_engine_src_analytics_engine_analyticsengine_calculatemicroprice",
+      "cpp_engine_src_analytics_engine_analyticsengine_classifyregime",
+      "cpp_engine_src_analytics_engine_analyticsengine_detectanomalies",
+      "cpp_engine_src_analytics_engine_analyticsengine_prev_ask_q",
+      "cpp_engine_src_analytics_engine_analyticsengine_prev_best_ask",
+      "cpp_engine_src_analytics_engine_analyticsengine_prev_best_bid",
+      "cpp_engine_src_analytics_engine_analyticsengine_prev_bid_q",
+      "cpp_engine_src_analytics_engine_analyticsengine_price_history",
+      "cpp_engine_src_analytics_engine_analyticsengine_price_history_size",
+      "cpp_engine_src_analytics_engine_analyticsengine_processsnapshot",
+      "cpp_engine_src_analytics_engine_analyticsengine_spoofing_events_count",
+      "cpp_engine_src_analytics_engine_analyticsengine_tick_size",
+      "cpp_engine_src_analytics_engine_analyticsengine_vol_history_size",
+      "cpp_engine_src_analytics_engine_analyticsengine_volume_volatility_history",
+      "cpp_engine_src_analytics_engine_cpp_cpp_engine_src_analytics_engine",
+      "cpp_engine_src_analytics_engine_cpp_processedsnapshot",
+      "cpp_engine_src_analytics_engine_cpp_snapshot",
+      "cpp_engine_src_analytics_engine_h_cpp_engine_src_analytics_engine",
+      "cpp_engine_src_server",
+      "cpp_engine_src_server_analyticsserviceimpl",
+      "cpp_engine_src_server_analyticsserviceimpl_engine",
+      "cpp_engine_src_server_analyticsserviceimpl_processsnapshot",
+      "cpp_engine_src_server_cpp_processedsnapshot",
+      "cpp_engine_src_server_cpp_snapshot",
+      "cpp_engine_src_server_main",
+      "cpp_engine_src_server_runserver",
+      "docs_features_shipped",
+      "frontend_canvaspricechart",
+      "frontend_liquiditygapmonitor",
+      "frontend_modeltest",
+      "frontend_orderbook",
+      "frontend_riskdashboard",
+      "frontend_signalmonitor",
+      "frontend_spoofingdetector",
+      "servercontext",
+      "service",
+      "status"
+    ],
+    "3": [
+      "backend_models_report",
+      "backend_models_report_tradingreport",
+      "backend_models_user",
+      "backend_models_user_rationale_16",
+      "backend_models_user_user",
+      "backend_models_user_user_to_dict",
+      "backend_routers_auth",
+      "backend_routers_auth_get_current_user",
+      "backend_routers_auth_login",
+      "backend_routers_auth_rationale_52",
+      "backend_routers_auth_rationale_88",
+      "backend_routers_auth_register",
+      "backend_schemas_auth",
+      "backend_schemas_auth_tokenresponse",
+      "backend_schemas_auth_userlogin",
+      "backend_schemas_auth_userregister",
+      "backend_schemas_auth_userresponse",
+      "backend_schemas_requests",
+      "backend_schemas_requests_rationale_1",
+      "backend_schemas_requests_rationale_14",
+      "backend_schemas_requests_rationale_19",
+      "backend_schemas_requests_rationale_33",
+      "backend_schemas_requests_rationale_9",
+      "backend_schemas_requests_sessioncontrol",
+      "backend_schemas_requests_sessioncreate",
+      "backend_schemas_requests_speedcontrol",
+      "backend_schemas_requests_websocketmessage",
+      "backend_schemas_requests_websocketmessage_validate_type",
+      "backend_utils_database",
+      "backend_utils_database_get_db",
+      "backend_utils_security",
+      "backend_utils_security_create_access_token",
+      "backend_utils_security_decode_access_token",
+      "backend_utils_security_get_password_hash",
+      "backend_utils_security_rationale_16",
+      "backend_utils_security_rationale_30",
+      "backend_utils_security_rationale_45",
+      "backend_utils_security_rationale_59",
+      "backend_utils_security_verify_password",
+      "base",
+      "basemodel",
+      "session"
+    ],
+    "4": [
+      "backend_analytics_core_alertmanager",
+      "backend_analytics_core_alertmanager_get_alert_history",
+      "backend_analytics_core_alertmanager_get_alert_stats",
+      "backend_analytics_core_alertmanager_hash_alert",
+      "backend_analytics_core_alertmanager_init",
+      "backend_analytics_core_alertmanager_should_suppress",
+      "backend_analytics_core_analyticsengine_init",
+      "backend_analytics_core_rationale_327",
+      "backend_analytics_core_rationale_340",
+      "backend_analytics_core_rationale_345",
+      "backend_analytics_core_rationale_385",
+      "backend_analytics_core_rationale_389",
+      "backend_analytics_core_tradeclassifier_init",
+      "backend_inference_service_modelinference",
+      "backend_inference_service_modelinference_cleanup_session",
+      "backend_inference_service_modelinference_extract_features",
+      "backend_inference_service_modelinference_get_stats",
+      "backend_inference_service_modelinference_init",
+      "backend_inference_service_modelinference_load_resources",
+      "backend_inference_service_modelinference_predict",
+      "backend_inference_service_modelinference_predict_batch",
+      "backend_inference_service_rationale_136",
+      "backend_inference_service_rationale_209",
+      "backend_inference_service_rationale_218",
+      "backend_inference_service_rationale_58",
+      "backend_inference_service_rationale_83",
+      "backend_tests_test_analytics_rationale_112",
+      "backend_tests_test_analytics_rationale_68",
+      "backend_tests_test_analytics_rationale_82",
+      "backend_tests_test_analytics_rationale_99",
+      "backend_tests_test_analytics_testalertmanager_test_alert_history_logging",
+      "backend_tests_test_analytics_testalertmanager_test_alert_stats",
+      "backend_tests_test_analytics_testalertmanager_test_deduplication_suppresses_duplicates",
+      "backend_tests_test_analytics_testalertmanager_test_severity_escalation",
+      "deque"
+    ],
+    "5": [
+      "backend_analytics_core_analyticsengine",
+      "backend_analytics_core_analyticsengine_train_kmeans_background",
+      "backend_analytics_core_rationale_798",
+      "backend_tests_test_advanced_anomalies_rationale_12",
+      "backend_tests_test_advanced_anomalies_rationale_167",
+      "backend_tests_test_advanced_anomalies_rationale_170",
+      "backend_tests_test_advanced_anomalies_rationale_189",
+      "backend_tests_test_advanced_anomalies_rationale_34",
+      "backend_tests_test_advanced_anomalies_rationale_9",
+      "backend_tests_test_advanced_anomalies_testquotestuffing",
+      "backend_tests_test_advanced_anomalies_testquotestuffing_test_quote_stuffing_detected_high_rate",
+      "backend_tests_test_advanced_anomalies_testquotestuffing_test_quote_stuffing_not_triggered_normal_rate",
+      "backend_tests_test_advanced_anomalies_testwashtrading",
+      "backend_tests_test_advanced_anomalies_testwashtrading_test_wash_trading_detected",
+      "backend_tests_test_advanced_anomalies_testwashtrading_test_wash_trading_not_triggered_varied_volumes",
+      "backend_tests_test_analytics_rationale_135",
+      "backend_tests_test_analytics_rationale_142",
+      "backend_tests_test_analytics_rationale_158",
+      "backend_tests_test_analytics_rationale_169",
+      "backend_tests_test_analytics_rationale_186",
+      "backend_tests_test_analytics_rationale_204",
+      "backend_tests_test_analytics_testanalyticsengine_test_engine_initialization",
+      "backend_tests_test_analytics_testanalyticsengine_test_ewma_baseline_updates",
+      "backend_tests_test_analytics_testanalyticsengine_test_heavy_imbalance_detection",
+      "backend_tests_test_analytics_testanalyticsengine_test_invalid_data_generates_validation_error",
+      "backend_tests_test_analytics_testanalyticsengine_test_liquidity_gap_detection",
+      "backend_tests_test_analytics_testanalyticsengine_test_process_valid_snapshot",
+      "backend_tests_test_features",
+      "backend_tests_test_features_main",
+      "backend_tests_test_features_rationale_108",
+      "backend_tests_test_features_rationale_13",
+      "backend_tests_test_features_rationale_62",
+      "backend_tests_test_features_test_liquidity_gaps_with_metrics",
+      "backend_tests_test_features_test_risk_progression",
+      "backend_tests_test_features_test_spoofing_with_risk_metrics"
+    ],
+    "6": [
+      "backend_analytics_core_analyticsengine_detect_advanced_anomalies",
+      "backend_analytics_core_marketsimulator_init",
+      "backend_analytics_core_rationale_611",
+      "backend_tests_synthetic_data_rationale_121",
+      "backend_tests_synthetic_data_rationale_13",
+      "backend_tests_synthetic_data_rationale_131",
+      "backend_tests_synthetic_data_rationale_201",
+      "backend_tests_synthetic_data_rationale_39",
+      "backend_tests_synthetic_data_rationale_64",
+      "backend_tests_synthetic_data_rationale_9",
+      "backend_tests_synthetic_data_rationale_96",
+      "backend_tests_synthetic_data_syntheticdatagenerator",
+      "backend_tests_synthetic_data_syntheticdatagenerator_generate_depth_shock_sequence",
+      "backend_tests_synthetic_data_syntheticdatagenerator_generate_flash_crash",
+      "backend_tests_synthetic_data_syntheticdatagenerator_generate_heavy_imbalance",
+      "backend_tests_synthetic_data_syntheticdatagenerator_generate_liquidity_crisis",
+      "backend_tests_synthetic_data_syntheticdatagenerator_generate_normal_market",
+      "backend_tests_synthetic_data_syntheticdatagenerator_generate_spoofing_scenario",
+      "backend_tests_synthetic_data_syntheticdatagenerator_generate_stress_test_sequence",
+      "backend_tests_test_scenarios_rationale_133",
+      "backend_tests_test_scenarios_rationale_136",
+      "backend_tests_test_scenarios_rationale_155",
+      "backend_tests_test_scenarios_rationale_71",
+      "backend_tests_test_scenarios_rationale_74",
+      "backend_tests_test_scenarios_testheavyimbalance",
+      "backend_tests_test_scenarios_testheavyimbalance_test_heavy_imbalance_detected",
+      "backend_tests_test_scenarios_teststressload",
+      "backend_tests_test_scenarios_teststressload_test_memory_stability_under_load",
+      "backend_tests_test_scenarios_teststressload_test_process_1000_snapshots",
+      "timedelta"
+    ],
+    "7": [
+      "dataset",
+      "model_building_src_data_loader",
+      "model_building_src_data_loader_datahandler",
+      "model_building_src_data_loader_datahandler_init",
+      "model_building_src_data_loader_datahandler_load_data",
+      "model_building_src_data_loader_datahandler_prepare_windows",
+      "model_building_src_data_loader_dynamiclabeler",
+      "model_building_src_data_loader_dynamiclabeler_get_labels",
+      "model_building_src_data_loader_dynamiclabeler_init",
+      "model_building_src_data_loader_lobdataset",
+      "model_building_src_data_loader_lobdataset_getitem",
+      "model_building_src_data_loader_lobdataset_init",
+      "model_building_src_data_loader_lobdataset_len",
+      "model_building_src_data_loader_rationale_16",
+      "model_building_src_data_loader_rationale_8",
+      "model_building_src_data_loader_rationale_93",
+      "model_building_src_evaluate",
+      "model_building_src_evaluate_evaluate_model",
+      "model_building_src_model",
+      "model_building_src_model_deeplob",
+      "model_building_src_model_deeplob_forward",
+      "model_building_src_model_deeplob_init",
+      "model_building_src_save_scaler",
+      "model_building_src_save_scaler_save_scaler",
+      "model_building_src_test_training",
+      "model_building_src_test_training_rationale_12",
+      "model_building_src_test_training_test_training",
+      "model_building_src_train",
+      "model_building_src_train_check_gpu",
+      "model_building_src_train_focalloss",
+      "model_building_src_train_focalloss_forward",
+      "model_building_src_train_focalloss_init",
+      "model_building_src_train_train"
+    ],
+    "8": [
+      "market_ingestor_binance_depth",
+      "market_ingestor_binance_depth_binancedepthclient",
+      "market_ingestor_binance_depth_binancedepthclient_apply_updates",
+      "market_ingestor_binance_depth_binancedepthclient_init",
+      "market_ingestor_binance_depth_binancedepthclient_snapshot",
+      "market_ingestor_binance_depth_binancedepthclient_stream",
+      "market_ingestor_main",
+      "market_ingestor_main_livefeedservicer",
+      "market_ingestor_main_livefeedservicer_change_symbol",
+      "market_ingestor_main_livefeedservicer_changesymbol",
+      "market_ingestor_main_livefeedservicer_init",
+      "market_ingestor_main_livefeedservicer_start_client",
+      "market_ingestor_main_livefeedservicer_streamsnapshots",
+      "market_ingestor_main_rationale_11",
+      "market_ingestor_main_rationale_20",
+      "market_ingestor_main_rationale_29",
+      "market_ingestor_main_rationale_33",
+      "market_ingestor_main_rationale_37",
+      "market_ingestor_main_rationale_59",
+      "market_ingestor_main_rationale_77",
+      "market_ingestor_main_serve",
+      "market_ingestor_main_smartqueue",
+      "market_ingestor_main_smartqueue_empty",
+      "market_ingestor_main_smartqueue_get",
+      "market_ingestor_main_smartqueue_get_nowait",
+      "market_ingestor_main_smartqueue_get_stats",
+      "market_ingestor_main_smartqueue_init",
+      "market_ingestor_main_smartqueue_put_smart",
+      "market_ingestor_main_smartqueue_qsize"
+    ],
+    "9": [
+      "market_microstructure_package",
+      "market_microstructure_package_dependencies",
+      "market_microstructure_package_dependencies_lightweight_charts",
+      "market_microstructure_package_dependencies_lucide_react",
+      "market_microstructure_package_dependencies_plotly_js",
+      "market_microstructure_package_dependencies_react",
+      "market_microstructure_package_dependencies_react_dom",
+      "market_microstructure_package_dependencies_react_icons",
+      "market_microstructure_package_dependencies_react_plotly_js",
+      "market_microstructure_package_dependencies_react_router_dom",
+      "market_microstructure_package_devdependencies",
+      "market_microstructure_package_devdependencies_eslint",
+      "market_microstructure_package_devdependencies_eslint_js",
+      "market_microstructure_package_devdependencies_eslint_plugin_react_hooks",
+      "market_microstructure_package_devdependencies_eslint_plugin_react_refresh",
+      "market_microstructure_package_devdependencies_globals",
+      "market_microstructure_package_devdependencies_types_react",
+      "market_microstructure_package_devdependencies_types_react_dom",
+      "market_microstructure_package_devdependencies_vite",
+      "market_microstructure_package_devdependencies_vitejs_plugin_react",
+      "market_microstructure_package_name",
+      "market_microstructure_package_private",
+      "market_microstructure_package_scripts",
+      "market_microstructure_package_scripts_build",
+      "market_microstructure_package_scripts_dev",
+      "market_microstructure_package_scripts_lint",
+      "market_microstructure_package_scripts_preview",
+      "market_microstructure_package_type",
+      "market_microstructure_package_version"
+    ],
+    "10": [
+      "market_microstructure_src_components_advancedanomalyfeed",
+      "market_microstructure_src_components_advancedanomalyfeed_advancedanomalyfeed",
+      "market_microstructure_src_components_canvasheatmap",
+      "market_microstructure_src_components_canvasheatmap_canvasheatmap",
+      "market_microstructure_src_components_controlsbar",
+      "market_microstructure_src_components_controlsbar_controlsbar",
+      "market_microstructure_src_components_featurepanel",
+      "market_microstructure_src_components_featurepanel_featurepanel",
+      "market_microstructure_src_components_liquiditygapchart",
+      "market_microstructure_src_components_liquiditygapchart_liquiditygapchart",
+      "market_microstructure_src_components_liquiditygapmonitor",
+      "market_microstructure_src_components_liquiditygapmonitor_liquiditygapmonitor",
+      "market_microstructure_src_components_priceladder",
+      "market_microstructure_src_components_priceladder_priceladder",
+      "market_microstructure_src_components_signalmonitor",
+      "market_microstructure_src_components_signalmonitor_signalmonitor",
+      "market_microstructure_src_components_snapshotinspector",
+      "market_microstructure_src_components_snapshotinspector_snapshotinspector",
+      "market_microstructure_src_components_spoofingdetector",
+      "market_microstructure_src_components_spoofingdetector_spoofingdetector",
+      "market_microstructure_src_components_spoofingriskchart",
+      "market_microstructure_src_components_spoofingriskchart_spoofingriskchart",
+      "market_microstructure_src_components_tradefeed",
+      "market_microstructure_src_components_tradefeed_tradefeed",
+      "market_microstructure_src_components_vpinchart",
+      "market_microstructure_src_components_vpinchart_vpinchart",
+      "market_microstructure_src_layout_dashboardlayout",
+      "market_microstructure_src_layout_dashboardlayout_genesispanel"
+    ],
+    "11": [
+      "backend_main",
+      "backend_main_download_report",
+      "backend_main_get_anomalies",
+      "backend_main_get_features",
+      "backend_main_get_latest_snapshot",
+      "backend_main_get_replay_state",
+      "backend_main_get_spoofing_events",
+      "backend_main_get_wash_trading_events",
+      "backend_main_go_back",
+      "backend_main_latency_benchmark",
+      "backend_main_list_reports",
+      "backend_main_pause_replay",
+      "backend_main_rationale_1000",
+      "backend_main_rationale_1102",
+      "backend_main_rationale_1378",
+      "backend_main_rationale_1463",
+      "backend_main_rationale_1635",
+      "backend_main_resume_replay",
+      "backend_main_set_mode",
+      "backend_main_set_speed",
+      "backend_main_start_replay",
+      "backend_main_stop_replay",
+      "backend_replay"
+    ],
+    "12": [
+      "backend_tests_synthetic_data",
+      "backend_tests_synthetic_data_get_crash_test_data",
+      "backend_tests_synthetic_data_get_spoofing_test_data",
+      "backend_tests_synthetic_data_get_stress_test_data",
+      "backend_tests_synthetic_data_rationale_1",
+      "backend_tests_synthetic_data_rationale_227",
+      "backend_tests_synthetic_data_rationale_231",
+      "backend_tests_synthetic_data_rationale_239",
+      "backend_tests_test_scenarios",
+      "backend_tests_test_scenarios_rationale_1",
+      "backend_tests_test_scenarios_rationale_13",
+      "backend_tests_test_scenarios_rationale_16",
+      "backend_tests_test_scenarios_rationale_35",
+      "backend_tests_test_scenarios_rationale_38",
+      "backend_tests_test_scenarios_rationale_85",
+      "backend_tests_test_scenarios_rationale_89",
+      "backend_tests_test_scenarios_testflashcrash",
+      "backend_tests_test_scenarios_testflashcrash_test_flash_crash_triggers_multiple_alerts",
+      "backend_tests_test_scenarios_testliquiditycrisis",
+      "backend_tests_test_scenarios_testliquiditycrisis_test_liquidity_gaps_detected",
+      "backend_tests_test_scenarios_testspoofingscenario",
+      "backend_tests_test_scenarios_testspoofingscenario_test_spoofing_sequence_detected"
+    ],
+    "13": [
+      "backend_session_strategy",
+      "backend_session_strategy_rationale_15",
+      "backend_session_strategy_rationale_22",
+      "backend_session_strategy_rationale_28",
+      "backend_session_strategy_rationale_9",
+      "backend_session_strategy_sessionstrategymanager",
+      "backend_session_strategy_sessionstrategymanager_cleanup_session",
+      "backend_session_strategy_sessionstrategymanager_get_or_create",
+      "backend_session_strategy_sessionstrategymanager_get_stats",
+      "backend_session_strategy_sessionstrategymanager_init",
+      "backend_strategy_service_rationale_25",
+      "backend_strategy_service_rationale_29",
+      "backend_strategy_service_rationale_38",
+      "backend_strategy_service_strategyengine",
+      "backend_strategy_service_strategyengine_close_position",
+      "backend_strategy_service_strategyengine_init",
+      "backend_strategy_service_strategyengine_open_position",
+      "backend_strategy_service_strategyengine_process_signal",
+      "backend_strategy_service_strategyengine_reset",
+      "backend_strategy_service_strategyengine_start",
+      "backend_strategy_service_strategyengine_stop"
+    ],
+    "14": [
+      "backend_tests_test_advanced_anomalies",
+      "backend_tests_test_advanced_anomalies_rationale_1",
+      "backend_tests_test_advanced_anomalies_rationale_206",
+      "backend_tests_test_advanced_anomalies_rationale_209",
+      "backend_tests_test_advanced_anomalies_rationale_232",
+      "backend_tests_test_advanced_anomalies_rationale_290",
+      "backend_tests_test_advanced_anomalies_rationale_293",
+      "backend_tests_test_advanced_anomalies_rationale_311",
+      "backend_tests_test_advanced_anomalies_rationale_54",
+      "backend_tests_test_advanced_anomalies_rationale_57",
+      "backend_tests_test_advanced_anomalies_rationale_95",
+      "backend_tests_test_advanced_anomalies_testanomalymetrics",
+      "backend_tests_test_advanced_anomalies_testanomalymetrics_test_layering_score_calculation",
+      "backend_tests_test_advanced_anomalies_testanomalymetrics_test_severity_levels_assigned_correctly",
+      "backend_tests_test_advanced_anomalies_testicebergorders",
+      "backend_tests_test_advanced_anomalies_testicebergorders_test_iceberg_cleanup_old_candidates",
+      "backend_tests_test_advanced_anomalies_testicebergorders_test_iceberg_order_detected",
+      "backend_tests_test_advanced_anomalies_testlayering",
+      "backend_tests_test_advanced_anomalies_testlayering_test_layering_detected_bid_side",
+      "backend_tests_test_advanced_anomalies_testlayering_test_layering_not_triggered_balanced_book"
+    ],
+    "15": [
+      "market_microstructure_src_app",
+      "market_microstructure_src_app_app",
+      "market_microstructure_src_components_protectedroute",
+      "market_microstructure_src_components_protectedroute_protectedroute",
+      "market_microstructure_src_components_sidebar",
+      "market_microstructure_src_components_sidebar_sidebar",
+      "market_microstructure_src_components_toast",
+      "market_microstructure_src_components_toast_toast",
+      "market_microstructure_src_contexts_authcontext",
+      "market_microstructure_src_contexts_authcontext_authcontext",
+      "market_microstructure_src_contexts_authcontext_authprovider",
+      "market_microstructure_src_contexts_authcontext_useauth",
+      "market_microstructure_src_main",
+      "market_microstructure_src_pages_auth",
+      "market_microstructure_src_pages_auth_authpage",
+      "market_microstructure_src_pages_dashboard",
+      "market_microstructure_src_pages_dashboard_dashboard",
+      "market_microstructure_src_pages_dashboard_symbols",
+      "market_microstructure_src_pages_home",
+      "market_microstructure_src_pages_home_home"
+    ],
+    "16": [
+      "any",
+      "backend_snapshot_processor",
+      "backend_snapshot_processor_rationale_1",
+      "backend_snapshot_processor_rationale_13",
+      "backend_snapshot_processor_rationale_26",
+      "backend_snapshot_processor_rationale_75",
+      "backend_snapshot_processor_rationale_89",
+      "backend_snapshot_processor_rationale_96",
+      "backend_snapshot_processor_snapshotprocessor",
+      "backend_snapshot_processor_snapshotprocessor_get_stats",
+      "backend_snapshot_processor_snapshotprocessor_init",
+      "backend_snapshot_processor_snapshotprocessor_process",
+      "backend_snapshot_processor_snapshotprocessor_process_with_python",
+      "backend_snapshot_processor_snapshotprocessor_set_cpp_client",
+      "backend_utils_data",
+      "backend_utils_data_rationale_1",
+      "backend_utils_data_rationale_9",
+      "backend_utils_data_sanitize"
+    ],
+    "17": [
+      "backend_main_broadcast_loop",
+      "backend_main_connectionmanager_broadcast",
+      "backend_main_connectionmanager_send_to_session",
+      "backend_main_live_grpc_loop",
+      "backend_main_live_snapshot_ingest",
+      "backend_main_metricscollector",
+      "backend_main_metricscollector_init",
+      "backend_main_metricscollector_record_error",
+      "backend_main_metricscollector_record_snapshot",
+      "backend_main_metricscollector_record_websocket_send",
+      "backend_main_processed_broadcast_loop",
+      "backend_main_rationale_1127",
+      "backend_main_rationale_400",
+      "backend_main_rationale_414",
+      "backend_main_rationale_586",
+      "backend_main_rationale_732",
+      "backend_main_rationale_751",
+      "backend_main_session_broadcast_loop"
+    ],
+    "18": [
+      "backend_session_replay_rationale_106",
+      "backend_session_replay_rationale_12",
+      "backend_session_replay_rationale_146",
+      "backend_session_replay_rationale_62",
+      "backend_session_replay_rationale_81",
+      "backend_session_replay_sessionmanager_cleanup_inactive_sessions",
+      "backend_session_replay_sessionmanager_delete_session",
+      "backend_session_replay_usersession",
+      "backend_session_replay_usersession_go_back",
+      "backend_session_replay_usersession_init",
+      "backend_session_replay_usersession_is_active",
+      "backend_session_replay_usersession_pause",
+      "backend_session_replay_usersession_resume",
+      "backend_session_replay_usersession_set_speed",
+      "backend_session_replay_usersession_shutdown",
+      "backend_session_replay_usersession_start",
+      "backend_session_replay_usersession_stop"
+    ],
+    "19": [
+      "backend_db_get_pool_stats",
+      "backend_db_rationale_153",
+      "backend_main_adaptiveprocessor_get_stats",
+      "backend_main_database_health",
+      "backend_main_database_pool_stats",
+      "backend_main_get_all_sessions",
+      "backend_main_get_metrics",
+      "backend_main_health_check",
+      "backend_main_metrics_dashboard",
+      "backend_main_metricscollector_get_stats",
+      "backend_main_rationale_1277",
+      "backend_main_rationale_1546",
+      "backend_main_rationale_1552",
+      "backend_main_rationale_1604",
+      "backend_main_rationale_1609",
+      "backend_main_rationale_360"
+    ],
+    "20": [
+      "backend_tests_test_integration_rationale_222",
+      "backend_tests_test_integration_rationale_225",
+      "backend_tests_test_integration_rationale_233",
+      "backend_tests_test_integration_rationale_241",
+      "backend_tests_test_integration_rationale_249",
+      "backend_tests_test_integration_rationale_257",
+      "backend_tests_test_integration_rationale_265",
+      "backend_tests_test_integration_rationale_281",
+      "backend_tests_test_integration_testadvancedanomalyendpoints",
+      "backend_tests_test_integration_testadvancedanomalyendpoints_test_anomalies_summary_counts_match",
+      "backend_tests_test_integration_testadvancedanomalyendpoints_test_anomalies_summary_endpoint",
+      "backend_tests_test_integration_testadvancedanomalyendpoints_test_iceberg_orders_endpoint",
+      "backend_tests_test_integration_testadvancedanomalyendpoints_test_layering_endpoint",
+      "backend_tests_test_integration_testadvancedanomalyendpoints_test_momentum_ignition_endpoint",
+      "backend_tests_test_integration_testadvancedanomalyendpoints_test_quote_stuffing_endpoint",
+      "backend_tests_test_integration_testadvancedanomalyendpoints_test_wash_trading_endpoint"
+    ],
+    "21": [
+      "backend_analytics_core_alertmanager_cleanup_old_deduplications",
+      "backend_analytics_core_alertmanager_escalate_severity",
+      "backend_analytics_core_alertmanager_log_alert",
+      "backend_analytics_core_analyticsengine_process_snapshot",
+      "backend_analytics_core_rationale_24",
+      "backend_analytics_core_rationale_360",
+      "backend_analytics_core_rationale_376",
+      "backend_analytics_core_rationale_397",
+      "backend_analytics_core_rationale_56",
+      "backend_analytics_core_rationale_72",
+      "backend_analytics_core_rationale_87",
+      "backend_analytics_core_tradeclassifier_calculate_effective_spread",
+      "backend_analytics_core_tradeclassifier_calculate_realized_spread",
+      "backend_analytics_core_tradeclassifier_classify_trade",
+      "backend_analytics_core_tradeclassifier_update_trade_history"
+    ],
+    "22": [
+      "backend_tests_test_sessions",
+      "backend_tests_test_sessions_main",
+      "backend_tests_test_sessions_rationale_106",
+      "backend_tests_test_sessions_rationale_194",
+      "backend_tests_test_sessions_rationale_59",
+      "backend_tests_test_sessions_sessiontester",
+      "backend_tests_test_sessions_sessiontester_control_replay",
+      "backend_tests_test_sessions_sessiontester_create_session",
+      "backend_tests_test_sessions_sessiontester_get_session_state",
+      "backend_tests_test_sessions_sessiontester_init",
+      "backend_tests_test_sessions_sessiontester_set_speed",
+      "backend_tests_test_sessions_sessiontester_switch_mode",
+      "backend_tests_test_sessions_test_backward_compatibility",
+      "backend_tests_test_sessions_test_multi_user_isolation"
+    ],
+    "23": [
+      "backend_main_adaptiveprocessor",
+      "backend_main_adaptiveprocessor_init",
+      "backend_main_adaptiveprocessor_record_processing_time",
+      "backend_main_adaptiveprocessor_should_process",
+      "backend_main_analytics_worker",
+      "backend_main_metricscollector_record_engine_latency",
+      "backend_main_rationale_315",
+      "backend_main_rationale_324",
+      "backend_main_rationale_336",
+      "backend_main_rationale_430",
+      "backend_main_rationale_778",
+      "backend_main_session_analytics_worker_async"
+    ],
+    "24": [
+      "backend_session_replay",
+      "backend_session_replay_rationale_114",
+      "backend_session_replay_rationale_121",
+      "backend_session_replay_rationale_133",
+      "backend_session_replay_rationale_162",
+      "backend_session_replay_sessionmanager",
+      "backend_session_replay_sessionmanager_create_session",
+      "backend_session_replay_sessionmanager_get_session",
+      "backend_session_replay_sessionmanager_get_stats",
+      "backend_session_replay_sessionmanager_init",
+      "backend_session_replay_usersession_get_state",
+      "queue"
+    ],
+    "25": [
+      "backend_tests_test_integration_rationale_107",
+      "backend_tests_test_integration_rationale_110",
+      "backend_tests_test_integration_rationale_116",
+      "backend_tests_test_integration_rationale_131",
+      "backend_tests_test_integration_rationale_140",
+      "backend_tests_test_integration_rationale_149",
+      "backend_tests_test_integration_testdataendpoints",
+      "backend_tests_test_integration_testdataendpoints_test_get_alert_history",
+      "backend_tests_test_integration_testdataendpoints_test_get_alert_stats",
+      "backend_tests_test_integration_testdataendpoints_test_get_anomalies",
+      "backend_tests_test_integration_testdataendpoints_test_get_features",
+      "backend_tests_test_integration_testdataendpoints_test_get_latest_snapshot"
+    ],
+    "26": [
+      "docs_5_cpp_engine_integration",
+      "docs_6_market_ingestor_microservice_live_mode_integration",
+      "docs_7_trobleshooting_data_flow",
+      "docs_8_fix_live_mode_grpc_protocol_bug",
+      "docs_9_ml_model_training_optimisations_info",
+      "docs_arch",
+      "docs_complete_proofofwork",
+      "docs_complete_proofofwork_appendix",
+      "docs_optimizations_memory_analysis",
+      "docs_optimizations_multi_user_analysis",
+      "docs_optimizations_session_architecture_implementation",
+      "docs_readme"
+    ],
+    "27": [
+      "market_microstructure_src_components_tradingviewchart",
+      "market_microstructure_src_components_tradingviewchart_tradingviewchart",
+      "market_microstructure_src_pages_marketpredict",
+      "market_microstructure_src_pages_marketpredict_genesispanel",
+      "market_microstructure_src_pages_marketpredict_marketpredict",
+      "market_microstructure_src_pages_marketpredict_metricbox",
+      "market_microstructure_src_pages_marketpredict_orderbookrow",
+      "market_microstructure_src_utils_logger",
+      "market_microstructure_src_utils_logger_formatmessage",
+      "market_microstructure_src_utils_logger_log_levels",
+      "market_microstructure_src_utils_logger_logger"
+    ],
+    "28": [
+      "backend_tests_conftest",
+      "backend_tests_conftest_crossed_book_snapshot",
+      "backend_tests_conftest_invalid_snapshot",
+      "backend_tests_conftest_rationale_1",
+      "backend_tests_conftest_rationale_11",
+      "backend_tests_conftest_rationale_43",
+      "backend_tests_conftest_rationale_53",
+      "backend_tests_conftest_rationale_63",
+      "backend_tests_conftest_sample_snapshot",
+      "backend_tests_conftest_wide_spread_snapshot"
+    ],
+    "29": [
+      "backend_tests_synthetic_data_get_malformed_test_data",
+      "backend_tests_synthetic_data_rationale_155",
+      "backend_tests_synthetic_data_rationale_235",
+      "backend_tests_synthetic_data_syntheticdatagenerator_generate_malformed_data",
+      "backend_tests_test_scenarios_rationale_103",
+      "backend_tests_test_scenarios_rationale_106",
+      "backend_tests_test_scenarios_rationale_119",
+      "backend_tests_test_scenarios_testmalformeddata",
+      "backend_tests_test_scenarios_testmalformeddata_test_all_malformed_scenarios_handled",
+      "backend_tests_test_scenarios_testmalformeddata_test_nan_values_rejected"
+    ],
+    "30": [
+      "backend_tests_test_integration_rationale_294",
+      "backend_tests_test_integration_rationale_297",
+      "backend_tests_test_integration_rationale_307",
+      "backend_tests_test_integration_rationale_317",
+      "backend_tests_test_integration_rationale_335",
+      "backend_tests_test_integration_testengineendpoints",
+      "backend_tests_test_integration_testengineendpoints_test_database_health_endpoint",
+      "backend_tests_test_integration_testengineendpoints_test_database_pool_endpoint",
+      "backend_tests_test_integration_testengineendpoints_test_engine_status_endpoint",
+      "backend_tests_test_integration_testengineendpoints_test_engine_switch_endpoint"
+    ],
+    "31": [
+      "backend_main_connectionmanager",
+      "backend_main_connectionmanager_connect",
+      "backend_main_connectionmanager_disconnect",
+      "backend_main_connectionmanager_init",
+      "backend_main_rationale_1162",
+      "backend_main_rationale_617",
+      "backend_main_session_csv_replay_loop",
+      "backend_main_websocket_endpoint",
+      "websocket"
+    ],
+    "32": [
+      "backend_main_initialize_cpp_engine",
+      "backend_main_lifespan",
+      "backend_main_live_data_dispatcher",
+      "backend_main_rationale_149",
+      "backend_main_rationale_1660",
+      "backend_main_rationale_250",
+      "backend_main_rationale_820",
+      "backend_main_switch_engine",
+      "fastapi"
+    ],
+    "33": [
+      "backend_tests_test_integration_rationale_63",
+      "backend_tests_test_integration_rationale_66",
+      "backend_tests_test_integration_rationale_72",
+      "backend_tests_test_integration_testreplaycontrols",
+      "backend_tests_test_integration_testreplaycontrols_test_pause_replay",
+      "backend_tests_test_integration_testreplaycontrols_test_resume_replay",
+      "backend_tests_test_integration_testreplaycontrols_test_set_speed",
+      "backend_tests_test_integration_testreplaycontrols_test_start_replay",
+      "backend_tests_test_integration_testreplaycontrols_test_stop_replay"
+    ],
+    "34": [
+      "market_microstructure_public_manifest",
+      "market_microstructure_public_manifest_background_color",
+      "market_microstructure_public_manifest_description",
+      "market_microstructure_public_manifest_display",
+      "market_microstructure_public_manifest_icons",
+      "market_microstructure_public_manifest_name",
+      "market_microstructure_public_manifest_short_name",
+      "market_microstructure_public_manifest_start_url",
+      "market_microstructure_public_manifest_theme_color"
+    ],
+    "35": [
+      "backend_tests_test_integration_rationale_159",
+      "backend_tests_test_integration_rationale_162",
+      "backend_tests_test_integration_rationale_171",
+      "backend_tests_test_integration_rationale_181",
+      "backend_tests_test_integration_testwebsocket",
+      "backend_tests_test_integration_testwebsocket_test_websocket_connection",
+      "backend_tests_test_integration_testwebsocket_test_websocket_handles_invalid_json",
+      "backend_tests_test_integration_testwebsocket_test_websocket_receives_updates"
+    ],
+    "36": [
+      "backend_tests_test_integration_rationale_195",
+      "backend_tests_test_integration_rationale_198",
+      "backend_tests_test_integration_rationale_207",
+      "backend_tests_test_integration_rationale_213",
+      "backend_tests_test_integration_testerrorhandling",
+      "backend_tests_test_integration_testerrorhandling_test_invalid_speed_value",
+      "backend_tests_test_integration_testerrorhandling_test_large_alert_limit",
+      "backend_tests_test_integration_testerrorhandling_test_negative_alert_limit"
+    ],
+    "37": [
+      "backend_tests_test_integration_rationale_27",
+      "backend_tests_test_integration_rationale_30",
+      "backend_tests_test_integration_rationale_41",
+      "backend_tests_test_integration_rationale_52",
+      "backend_tests_test_integration_testhealthandmetrics",
+      "backend_tests_test_integration_testhealthandmetrics_test_health_endpoint",
+      "backend_tests_test_integration_testhealthandmetrics_test_metrics_dashboard_endpoint",
+      "backend_tests_test_integration_testhealthandmetrics_test_metrics_endpoint"
+    ],
+    "38": [
+      "backend_tests_test_trade_data",
+      "backend_tests_test_trade_data_rationale_1",
+      "backend_tests_test_trade_data_rationale_221",
+      "backend_tests_test_trade_data_rationale_224",
+      "backend_tests_test_trade_data_rationale_246",
+      "backend_tests_test_trade_data_testintegration",
+      "backend_tests_test_trade_data_testintegration_test_no_trade_data",
+      "backend_tests_test_trade_data_testintegration_test_trade_metrics_in_snapshot"
+    ],
+    "39": [
+      "backend_tests_test_trade_data_rationale_12",
+      "backend_tests_test_trade_data_rationale_15",
+      "backend_tests_test_trade_data_rationale_27",
+      "backend_tests_test_trade_data_rationale_39",
+      "backend_tests_test_trade_data_testleready",
+      "backend_tests_test_trade_data_testleready_test_at_mid_price_quote_rule",
+      "backend_tests_test_trade_data_testleready_test_buy_side_classification",
+      "backend_tests_test_trade_data_testleready_test_sell_side_classification"
+    ],
+    "40": [
+      "market_microstructure_src_config_environment",
+      "market_microstructure_src_config_environment_config",
+      "market_microstructure_src_config_environment_configvalidator",
+      "market_microstructure_src_config_environment_configvalidator_constructor",
+      "market_microstructure_src_config_environment_configvalidator_get",
+      "market_microstructure_src_config_environment_configvalidator_getall",
+      "market_microstructure_src_config_environment_configvalidator_validate",
+      "market_microstructure_src_config_environment_requiredvars"
+    ],
+    "41": [
+      "backend_analytics_core_rationale_12",
+      "backend_analytics_core_tradeclassifier",
+      "backend_tests_test_trade_data_rationale_54",
+      "backend_tests_test_trade_data_rationale_57",
+      "backend_tests_test_trade_data_testeffectivespread",
+      "backend_tests_test_trade_data_testeffectivespread_test_effective_spread_buy",
+      "backend_tests_test_trade_data_testeffectivespread_test_effective_spread_sell"
+    ],
+    "42": [
+      "backend_csv_service",
+      "backend_csv_service_csvreportservice",
+      "backend_csv_service_csvreportservice_generate_trades_csv",
+      "backend_csv_service_csvreportservice_init",
+      "backend_csv_service_csvreportservice_parse_csv_stats",
+      "backend_csv_service_rationale_101",
+      "backend_csv_service_rationale_33"
+    ],
+    "43": [
+      "backend_inference_service",
+      "backend_strategy_service",
+      "docs_csv_reports_system",
+      "docs_pow",
+      "docs_quick_start_report_service",
+      "model_building_src_model_building_src_model_building_model",
+      "model_building_train"
+    ],
+    "44": [
+      "market_microstructure_src_components_errorboundary",
+      "market_microstructure_src_components_errorboundary_errorboundary",
+      "market_microstructure_src_components_errorboundary_errorboundary_componentdidcatch",
+      "market_microstructure_src_components_errorboundary_errorboundary_constructor",
+      "market_microstructure_src_components_errorboundary_errorboundary_getderivedstatefromerror",
+      "market_microstructure_src_components_errorboundary_errorboundary_handlereset",
+      "market_microstructure_src_components_errorboundary_errorboundary_render"
+    ],
+    "45": [
+      "backend_analytics_core_anomalydetectionutils_detect_rapid_trading",
+      "backend_analytics_core_anomalydetectionutils_detect_volume_anomaly",
+      "backend_analytics_core_rationale_153",
+      "backend_analytics_core_rationale_182",
+      "backend_analytics_core_rationale_98",
+      "backend_analytics_core_tradeclassifier_detect_trade_anomalies"
+    ],
+    "46": [
+      "backend_tests_test_advanced_anomalies_rationale_112",
+      "backend_tests_test_advanced_anomalies_rationale_115",
+      "backend_tests_test_advanced_anomalies_rationale_147",
+      "backend_tests_test_advanced_anomalies_testmomentumignition",
+      "backend_tests_test_advanced_anomalies_testmomentumignition_test_momentum_ignition_detected",
+      "backend_tests_test_advanced_anomalies_testmomentumignition_test_momentum_ignition_not_triggered_small_moves"
+    ],
+    "47": [
+      "backend_tests_test_advanced_anomalies_rationale_253",
+      "backend_tests_test_advanced_anomalies_rationale_256",
+      "backend_tests_test_advanced_anomalies_rationale_272",
+      "backend_tests_test_advanced_anomalies_testhybridengine",
+      "backend_tests_test_advanced_anomalies_testhybridengine_test_advanced_anomalies_with_empty_book",
+      "backend_tests_test_advanced_anomalies_testhybridengine_test_detect_advanced_anomalies_standalone"
+    ],
+    "48": [
+      "backend_tests_test_integration",
+      "backend_tests_test_integration_client",
+      "backend_tests_test_integration_rationale_1",
+      "backend_tests_test_integration_rationale_10",
+      "backend_tests_test_integration_rationale_16",
+      "backend_tests_test_integration_session_id"
+    ],
+    "49": [
+      "backend_tests_test_trade_data_rationale_112",
+      "backend_tests_test_trade_data_rationale_115",
+      "backend_tests_test_trade_data_rationale_139",
+      "backend_tests_test_trade_data_testvpin",
+      "backend_tests_test_trade_data_testvpin_test_vpin_calculation",
+      "backend_tests_test_trade_data_testvpin_test_vpin_with_balanced_trades"
+    ],
+    "50": [
+      "backend_tests_test_trade_data_rationale_166",
+      "backend_tests_test_trade_data_rationale_169",
+      "backend_tests_test_trade_data_rationale_198",
+      "backend_tests_test_trade_data_testtradeanomalies",
+      "backend_tests_test_trade_data_testtradeanomalies_test_rapid_trading_detection",
+      "backend_tests_test_trade_data_testtradeanomalies_test_unusual_trade_size_detection"
+    ],
+    "51": [
+      "backend_tests_test_trade_data_rationale_80",
+      "backend_tests_test_trade_data_rationale_83",
+      "backend_tests_test_trade_data_rationale_97",
+      "backend_tests_test_trade_data_testrealizedspread",
+      "backend_tests_test_trade_data_testrealizedspread_test_realized_spread_buy",
+      "backend_tests_test_trade_data_testrealizedspread_test_realized_spread_sell"
+    ],
+    "52": [
+      "market_microstructure_src_layout_dashboardlayout_dashboardlayout",
+      "market_microstructure_src_pages_reports",
+      "market_microstructure_src_pages_reports_genesispanel",
+      "market_microstructure_src_pages_reports_metriccard",
+      "market_microstructure_src_pages_reports_reportrow",
+      "market_microstructure_src_pages_reports_reports"
+    ],
+    "53": [
+      "backend_analytics_analytics_client",
+      "backend_analytics_analytics_client_cppanalyticsclient",
+      "backend_analytics_analytics_client_cppanalyticsclient_init",
+      "backend_analytics_analytics_client_cppanalyticsclient_process_snapshot",
+      "backend_analytics_init"
+    ],
+    "54": [
+      "backend_main_rationale_913",
+      "backend_main_rationale_969",
+      "backend_main_start_strategy",
+      "backend_main_start_strategy_default"
+    ],
+    "55": [
+      "backend_main_rationale_920",
+      "backend_main_rationale_979",
+      "backend_main_stop_strategy",
+      "backend_main_stop_strategy_default"
+    ],
+    "56": [
+      "backend_main_rationale_951",
+      "backend_main_rationale_988",
+      "backend_main_reset_strategy",
+      "backend_main_reset_strategy_default"
+    ],
+    "57": [
+      "cpp_engine_analytics_engine",
+      "cpp_engine_proto",
+      "cpp_engine_server",
+      "docs_cpp_engine_microservice_setup"
+    ],
+    "58": [
+      "market_ingestor_test_client",
+      "market_ingestor_test_client_rationale_11",
+      "market_ingestor_test_client_test_realtime_data"
+    ],
+    "59": [
+      "backend_docker_compose",
+      "docs_setup_backend"
+    ],
+    "60": [
+      "backend_main_delete_session",
+      "backend_main_rationale_1282"
+    ],
+    "61": [
+      "backend_main_engine_status",
+      "backend_main_rationale_1648"
+    ],
+    "62": [
+      "backend_main_get_alert_history",
+      "backend_main_rationale_1397"
+    ],
+    "63": [
+      "backend_main_get_alert_stats",
+      "backend_main_rationale_1402"
+    ],
+    "64": [
+      "backend_main_get_anomalies_summary",
+      "backend_main_rationale_1503"
+    ],
+    "65": [
+      "backend_main_get_iceberg_order_events",
+      "backend_main_rationale_1482"
+    ],
+    "66": [
+      "backend_main_get_layering_events",
+      "backend_main_rationale_1425"
+    ],
+    "67": [
+      "backend_main_get_liquidity_gaps",
+      "backend_main_rationale_1359"
+    ],
+    "68": [
+      "backend_main_get_momentum_ignition_events",
+      "backend_main_rationale_1444"
+    ],
+    "69": [
+      "backend_main_get_quote_stuffing_events",
+      "backend_main_rationale_1407"
+    ],
+    "70": [
+      "backend_main_get_trade_anomalies",
+      "backend_main_rationale_1842"
+    ],
+    "71": [
+      "backend_main_get_trade_classification",
+      "backend_main_rationale_1744"
+    ],
+    "72": [
+      "backend_main_get_trade_spreads",
+      "backend_main_rationale_1760"
+    ],
+    "73": [
+      "backend_main_get_vpin",
+      "backend_main_rationale_1805"
+    ],
+    "74": [
+      "backend_main_rationale_1685",
+      "backend_main_run_benchmark"
+    ],
+    "75": [
+      "backend_tests_create_and_load_data",
+      "backend_tests_create_and_load_data_create_and_load_data"
+    ],
+    "76": [
+      "backend_tests_simple_load_data",
+      "backend_tests_simple_load_data_load_data"
+    ],
+    "77": [
+      "backend_tests_test_db",
+      "backend_tests_test_db_test_db_connection"
+    ],
+    "78": [
+      "backend_tests_test_market_ingestor",
+      "backend_tests_test_market_ingestor_test_market_ingestor"
+    ],
+    "79": [
+      "backend_tests_test_new_session",
+      "backend_tests_test_new_session_test_new_session"
+    ],
+    "80": [
+      "backend_tests_test_websocket",
+      "backend_tests_test_websocket_test_websocket"
+    ],
+    "81": [
+      "market_microstructure_src_components_dataexport",
+      "market_microstructure_src_components_dataexport_dataexport"
+    ],
+    "82": [
+      "market_microstructure_src_components_seo",
+      "market_microstructure_src_components_seo_seo"
+    ],
+    "83": [
+      "opencode_plugins_graphify",
+      "opencode_plugins_graphify_graphifyplugin"
+    ],
+    "84": [
+      "assets_architecture"
+    ],
+    "85": [
+      "assets_dashboard"
+    ],
+    "86": [
+      "assets_deeplob"
+    ],
+    "87": [
+      "assets_deployment"
+    ],
+    "88": [
+      "assets_homepage"
+    ],
+    "89": [
+      "assets_report"
+    ],
+    "90": [
+      "backend_loader_load_l2_data"
+    ],
+    "91": [
+      "backend_loader_prepare_csv"
+    ],
+    "92": [
+      "backend_rpc_stubs_init"
+    ],
+    "93": [
+      "backend_tests_check_csv"
+    ],
+    "94": [
+      "backend_tests_init"
+    ],
+    "95": [
+      "backend_tests_load_sample_data"
+    ],
+    "96": [
+      "docs_arch_copy"
+    ],
+    "97": [
+      "market_ingestor_requirements_txt"
+    ],
+    "98": [
+      "market_ingestor_rpc_stubs_init"
+    ],
+    "99": [
+      "market_microstructure_eslint_config"
+    ],
+    "100": [
+      "market_microstructure_index_html"
+    ],
+    "101": [
+      "market_microstructure_public_apple_touch_icon_png"
+    ],
+    "102": [
+      "market_microstructure_public_favicon_16x16_png"
+    ],
+    "103": [
+      "market_microstructure_public_favicon_32x32_png"
+    ],
+    "104": [
+      "market_microstructure_public_icon_192_png"
+    ],
+    "105": [
+      "market_microstructure_public_icon_512_png"
+    ],
+    "106": [
+      "market_microstructure_public_og_image_png"
+    ],
+    "107": [
+      "market_microstructure_public_robots_txt"
+    ],
+    "108": [
+      "market_microstructure_public_twitter_image_png"
+    ],
+    "109": [
+      "market_microstructure_public_vite_svg"
+    ],
+    "110": [
+      "market_microstructure_readme"
+    ],
+    "111": [
+      "market_microstructure_vite_config"
+    ],
+    "112": [
+      "model_building_evaluate"
+    ],
+    "113": [
+      "backend_tests_test_scenarios_rationale_49",
+      "backend_tests_test_scenarios_rationale_52",
+      "backend_tests_test_scenarios_testdepthshock",
+      "backend_tests_test_scenarios_testdepthshock_test_depth_shock_sequence_detected"
+    ]
+  },
+  "cohesion": {
+    "0": 0.0636734693877551,
+    "1": 0.06382978723404255,
+    "2": 0.05757575757575758,
+    "3": 0.07317073170731707,
+    "4": 0.06722689075630252,
+    "5": 0.07226890756302522,
+    "6": 0.0896551724137931,
+    "7": 0.0946969696969697,
+    "8": 0.10591133004926108,
+    "9": 0.06896551724137931,
+    "10": 0.10582010582010581,
+    "11": 0.08695652173913043,
+    "12": 0.09956709956709957,
+    "13": 0.10952380952380952,
+    "14": 0.1,
+    "15": 0.23157894736842105,
+    "16": 0.1437908496732026,
+    "17": 0.13725490196078433,
+    "18": 0.1323529411764706,
+    "19": 0.13333333333333333,
+    "20": 0.125,
+    "21": 0.13333333333333333,
+    "22": 0.23076923076923078,
+    "23": 0.18181818181818182,
+    "24": 0.16666666666666666,
+    "25": 0.16666666666666666,
+    "26": 0.30303030303030304,
+    "27": 0.21818181818181817,
+    "28": 0.2,
+    "29": 0.2,
+    "30": 0.2,
+    "31": 0.3055555555555556,
+    "32": 0.2222222222222222,
+    "33": 0.3055555555555556,
+    "34": 0.2222222222222222,
+    "35": 0.25,
+    "36": 0.25,
+    "37": 0.25,
+    "38": 0.25,
+    "39": 0.25,
+    "40": 0.2857142857142857,
+    "41": 0.42857142857142855,
+    "42": 0.2857142857142857,
+    "43": 0.3333333333333333,
+    "44": 0.2857142857142857,
+    "45": 0.3333333333333333,
+    "46": 0.3333333333333333,
+    "47": 0.3333333333333333,
+    "48": 0.3333333333333333,
+    "49": 0.3333333333333333,
+    "50": 0.3333333333333333,
+    "51": 0.3333333333333333,
+    "52": 0.3333333333333333,
+    "53": 0.4,
+    "54": 0.5,
+    "55": 0.5,
+    "56": 0.5,
+    "57": 0.6666666666666666,
+    "58": 0.6666666666666666,
+    "59": 1.0,
+    "60": 1.0,
+    "61": 1.0,
+    "62": 1.0,
+    "63": 1.0,
+    "64": 1.0,
+    "65": 1.0,
+    "66": 1.0,
+    "67": 1.0,
+    "68": 1.0,
+    "69": 1.0,
+    "70": 1.0,
+    "71": 1.0,
+    "72": 1.0,
+    "73": 1.0,
+    "74": 1.0,
+    "75": 1.0,
+    "76": 1.0,
+    "77": 1.0,
+    "78": 1.0,
+    "79": 1.0,
+    "80": 1.0,
+    "81": 1.0,
+    "82": 1.0,
+    "83": 1.0,
+    "84": 1.0,
+    "85": 1.0,
+    "86": 1.0,
+    "87": 1.0,
+    "88": 1.0,
+    "89": 1.0,
+    "90": 1.0,
+    "91": 1.0,
+    "92": 1.0,
+    "93": 1.0,
+    "94": 1.0,
+    "95": 1.0,
+    "96": 1.0,
+    "97": 1.0,
+    "98": 1.0,
+    "99": 1.0,
+    "100": 1.0,
+    "101": 1.0,
+    "102": 1.0,
+    "103": 1.0,
+    "104": 1.0,
+    "105": 1.0,
+    "106": 1.0,
+    "107": 1.0,
+    "108": 1.0,
+    "109": 1.0,
+    "110": 1.0,
+    "111": 1.0,
+    "112": 1.0,
+    "113": 0.5
+  },
+  "gods": [
+    {
+      "id": "backend_analytics_core_analyticsengine",
+      "label": "AnalyticsEngine",
+      "degree": 69
+    },
+    {
+      "id": "backend_analytics_core_tradeclassifier",
+      "label": "TradeClassifier",
+      "degree": 25
+    },
+    {
+      "id": "backend_session_replay_usersession",
+      "label": "UserSession",
+      "degree": 21
+    },
+    {
+      "id": "backend_analytics_core_alertmanager",
+      "label": "AlertManager",
+      "degree": 20
+    },
+    {
+      "id": "cpp_engine_src_analytics_engine_analyticsengine",
+      "label": "AnalyticsEngine",
+      "degree": 20
+    },
+    {
+      "id": "backend_analytics_core_datavalidator",
+      "label": "DataValidator",
+      "degree": 18
+    },
+    {
+      "id": "backend_tests_synthetic_data_syntheticdatagenerator",
+      "label": "SyntheticDataGenerator",
+      "degree": 17
+    },
+    {
+      "id": "backend_analytics_core_marketsimulator",
+      "label": "MarketSimulator",
+      "degree": 15
+    },
+    {
+      "id": "backend_main_metricscollector",
+      "label": "MetricsCollector",
+      "degree": 15
+    },
+    {
+      "id": "backend_main_adaptiveprocessor",
+      "label": "AdaptiveProcessor",
+      "degree": 14
+    }
+  ],
+  "surprises": [
+    {
+      "source": "Features Shipped: Market Analytics & Trading Reports",
+      "target": "Backend analytics.py",
+      "source_files": [
+        "docs/2_Features_shipped.md",
+        "backend/analytics.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "references",
+      "why": "inferred connection - not explicitly stated in source; crosses file types (code ↔ doc); connects across different repos/directories"
+    },
+    {
+      "source": "Features Shipped: Market Analytics & Trading Reports",
+      "target": "Frontend LiquidityGapMonitor.jsx",
+      "source_files": [
+        "docs/2_Features_shipped.md",
+        "market-microstructure/src/components/LiquidityGapMonitor.jsx"
+      ],
+      "confidence": "INFERRED",
+      "relation": "references",
+      "why": "inferred connection - not explicitly stated in source; crosses file types (code ↔ doc); connects across different repos/directories"
+    },
+    {
+      "source": "Features Shipped: Market Analytics & Trading Reports",
+      "target": "Frontend SpoofingDetector.jsx",
+      "source_files": [
+        "docs/2_Features_shipped.md",
+        "market-microstructure/src/components/SpoofingDetector.jsx"
+      ],
+      "confidence": "INFERRED",
+      "relation": "references",
+      "why": "inferred connection - not explicitly stated in source; crosses file types (code ↔ doc); connects across different repos/directories"
+    },
+    {
+      "source": "ModelInference",
+      "target": "DeepLOB",
+      "source_files": [
+        "backend/inference_service.py",
+        "model_building/src/model.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "C++ Analytics Engine Microservice Setup",
+      "target": "C++ gRPC Server (server.cpp)",
+      "source_files": [
+        "docs/4_Cpp_Engine_Microservice_Setup.md",
+        "cpp_engine/src/server.cpp"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "crosses file types (code ↔ doc); connects across different repos/directories"
+    }
+  ],
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `AnalyticsEngine` connect `Anomaly Detection Tests` to `Database Connection Pooling`, `Anomaly Detection Utilities`, `Alert Management System`, `Synthetic Market Data Generation`, `Synthetic Data Test Scenarios`, `Advanced Anomaly Detection Tests`, `Live Data Metrics Collection`, `Trade Alert Processing`, `Adaptive Analytics Processing`, `Malformed Data Validation Tests`, `WebSocket Connection Management`, `Trade Data Integration Tests`, `Lee-Ready Trade Classification Tests`, `Trade Classification and Spread Tests`, `Momentum Ignition Detection Tests`, `Hybrid Engine Anomaly Tests`, `V-PIN Calculation Tests`, `Trade-Level Anomaly Tests`, `Realized Spread Calculation Tests`, `Depth Shock Detection Tests`?",
+      "why": "High betweenness centrality (0.258) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `ConnectionManager` connect `WebSocket Connection Management` to `Anomaly Detection Utilities`, `Alert Management System`, `Anomaly Detection Tests`, `Anomaly and Event Retrieval`, `Session-Based Strategy Management`, `Snapshot Processing Service`, `Live Data Metrics Collection`, `User Replay Session Management`, `C++ Analytics Client`, `User Session Management`?",
+      "why": "High betweenness centrality (0.222) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `Dashboard()` connect `Frontend Application and Auth` to `WebSocket Connection Management`?",
+      "why": "High betweenness centrality (0.110) - this node is a cross-community bridge."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 64 inferred relationships involving `AnalyticsEngine` (e.g. with `AnomalyDetectionUtils` and `AdaptiveProcessor`) actually correct?",
+      "why": "`AnalyticsEngine` has 64 INFERRED edges - model-reasoned connections that need verification."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 16 inferred relationships involving `TradeClassifier` (e.g. with `AnomalyDetectionUtils` and `TestEffectiveSpread`) actually correct?",
+      "why": "`TradeClassifier` has 16 INFERRED edges - model-reasoned connections that need verification."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 3 inferred relationships involving `UserSession` (e.g. with `AdaptiveProcessor` and `ConnectionManager`) actually correct?",
+      "why": "`UserSession` has 3 INFERRED edges - model-reasoned connections that need verification."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 9 inferred relationships involving `AlertManager` (e.g. with `AnomalyDetectionUtils` and `TestAlertManager`) actually correct?",
+      "why": "`AlertManager` has 9 INFERRED edges - model-reasoned connections that need verification."
+    }
+  ]
+}

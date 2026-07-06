@@ -8,9 +8,32 @@ import bcrypt
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY", "")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
+
+_PLACEHOLDER_PREFIXES = (
+    "your-super-secret", "change-me", "changeme", "replace-me",
+    "your-secret-key", "your_secret_key", "placeholder"
+)
+
+if not SECRET_KEY:
+    raise ValueError(
+        "SECRET_KEY environment variable is not set or is empty. "
+        "Generate one with: python -c 'import secrets; print(secrets.token_hex(32))'"
+    )
+
+if len(SECRET_KEY) < 32:
+    raise ValueError(
+        f"SECRET_KEY must be at least 32 characters long (currently {len(SECRET_KEY)}). "
+        "Generate one with: python -c 'import secrets; print(secrets.token_hex(32))'"
+    )
+
+if any(SECRET_KEY.lower().startswith(p) for p in _PLACEHOLDER_PREFIXES):
+    raise ValueError(
+        "SECRET_KEY appears to be a placeholder value. "
+        "Generate a real key with: python -c 'import secrets; print(secrets.token_hex(32))'"
+    )
 
 def get_password_hash(password: str) -> str:
     """

@@ -1,5 +1,5 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Path
+from fastapi.responses import JSONResponse, Response
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -16,6 +16,9 @@ from routers import auth
 from utils.database import Base, engine as db_engine
 from analytics_core import AnalyticsEngine, db_row_to_snapshot, MarketSimulator
 from db import get_connection, return_connection, close_all_connections, get_pool_stats, get_connection_pool
+from models.alert import CustomAlertRule, CustomAlertHistory
+from alert_service import AlertSystem
+alert_system = AlertSystem()
 
 from datetime import datetime
 from decimal import Decimal
@@ -41,9 +44,11 @@ from csv_service import csv_service
 load_dotenv()
 
 # Configuration
-USE_CPP_ENGINE = os.getenv("USE_CPP_ENGINE", "true").lower() == "true"  # Auto-enable C++ engine
+USE_CPP_ENGINE = os.getenv("USE_CPP_ENGINE", "true").lower() == "true"
 CPP_ENGINE_HOST = os.getenv("CPP_ENGINE_HOST", "localhost")
 CPP_ENGINE_PORT = int(os.getenv("CPP_ENGINE_PORT", "50051"))
+MARKET_INGESTOR_HOST = os.getenv("MARKET_INGESTOR_HOST", "localhost")
+MARKET_INGESTOR_PORT = os.getenv("MARKET_INGESTOR_PORT", "6000")
 
 # Buffer and Queue Configuration
 MAX_BUFFER_SIZE = int(os.getenv("MAX_BUFFER_SIZE", "100"))
@@ -149,20 +154,22 @@ async def lifespan(app: FastAPI):
     """Manage application startup and shutdown"""
     # Startup
     logger.info("Starting application...")
-    
-    # Create database tables only if engine is available
+
     if db_engine:
-        Base.metadata.create_all(bind=db_engine)
-    
-    # Initialize async database pool
-    try:
-        await get_connection_pool()
-        logger.info("✅ Async database pool initialized")
-    except Exception as e:
-        logger.error(f"Failed to initialize async database pool: {e}")
-    
-    # Initialize C++ engine
-    initialize_cpp_engine()
+        try:
+            Base.metadata.create_all(bind=db_engine)
+            logger.info("✅ Database tables verified")
+        except Exception as e:
+            logger.warning(f"Could not verify/create tables (may already exist): {e}")
+
+    if os.getenv("TEST_AUTH_BYPASS", "").lower() != "true":
+        try:
+            await get_connection_pool()
+            logger.info("✅ Async database pool initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize async database pool: {e}")
+
+        initialize_cpp_engine()
 
     # Start Live Data Dispatcher
     asyncio.create_task(live_data_dispatcher())
@@ -172,7 +179,16 @@ async def lifespan(app: FastAPI):
     async def cleanup_sessions_periodically():
         while True:
             await asyncio.sleep(300)  # Every 5 minutes
-            await session_manager.cleanup_inactive_sessions()
+            inactive_sids = []
+            async with session_manager._lock:
+                for sid, session in session_manager.sessions.items():
+                    if not session.is_active():
+                        inactive_sids.append(sid)
+            for sid in inactive_sids:
+                logger.info(f"Cleaning up inactive session {sid}")
+                await session_manager.delete_session(sid)
+                inference_engine.cleanup_session(sid)
+                strategy_manager.cleanup_session(sid)
     
     cleanup_task = asyncio.create_task(cleanup_sessions_periodically())
     
@@ -216,17 +232,66 @@ async def lifespan(app: FastAPI):
 # --------------------------------------------------
 app = FastAPI(lifespan=lifespan)
 app.state.limiter = limiter
-app.add_middleware(SlowAPIMiddleware)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 app.include_router(auth.router)
+
+PUBLIC_PATHS = {
+    "/auth/login", "/auth/register", "/health", "/docs", "/openapi.json", "/redoc"
+}
+
+ALLOWED_ORIGINS = {
+    os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/"),
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+}
+
+@app.middleware("http")
+async def cors_auth_middleware(request: Request, call_next):
+    origin = request.headers.get("origin", "")
+
+    if request.method == "OPTIONS":
+        headers = {
+            "Access-Control-Allow-Origin": origin if origin in ALLOWED_ORIGINS else "http://localhost:5173",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Authorization, Content-Type",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Max-Age": "600",
+            "X-Debug-Cors": "custom-middleware-active",
+        }
+        return Response(status_code=200, headers=headers)
+
+    if request.url.path in PUBLIC_PATHS or request.url.path.startswith("/ws/"):
+        response = await call_next(request)
+    elif os.getenv("TEST_AUTH_BYPASS", "").lower() == "true":
+        response = await call_next(request)
+    else:
+        token = request.cookies.get("access_token")
+        if not token:
+            auth_header = request.headers.get("Authorization", "")
+            if auth_header.startswith("Bearer "):
+                token = auth_header[7:]
+
+        if not token:
+            response = JSONResponse(
+                status_code=401,
+                content={"detail": "Not authenticated"}
+            )
+        else:
+            from routers.auth import _verify_token
+            payload = _verify_token(token)
+            if payload is None:
+                response = JSONResponse(
+                    status_code=401,
+                    content={"detail": "Invalid authentication credentials"}
+                )
+            else:
+                response = await call_next(request)
+
+    response.headers["Access-Control-Allow-Origin"] = origin if origin in ALLOWED_ORIGINS else "http://localhost:5173"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
+
+app.add_middleware(SlowAPIMiddleware)
 
 # --------------------------------------------------
 # Core Components
@@ -294,7 +359,42 @@ snapshot_processor = SnapshotProcessor(
 )
 
 
-data_buffer: List[dict] = []
+class SafeDataBuffer:
+    """Thread-safe rolling buffer for snapshot data with automatic size control."""
+    def __init__(self, max_size: int = 1000):
+        self._buffer = deque(maxlen=max_size)
+        self._lock = threading.Lock()
+        self.max_size = max_size
+
+    def append(self, item: dict):
+        with self._lock:
+            self._buffer.append(item)
+
+    def get_all(self) -> list[dict]:
+        with self._lock:
+            return list(self._buffer)
+
+    def get_latest(self):
+        with self._lock:
+            return self._buffer[-1] if self._buffer else None
+
+    def get_last(self, n: int) -> list[dict]:
+        with self._lock:
+            buf_len = len(self._buffer)
+            if buf_len == 0:
+                return []
+            return list(self._buffer)[-min(n, buf_len):]
+
+    def __len__(self) -> int:
+        with self._lock:
+            return len(self._buffer)
+
+    def __bool__(self) -> bool:
+        with self._lock:
+            return bool(self._buffer)
+
+
+data_buffer = SafeDataBuffer(max_size=MAX_BUFFER_SIZE)
 simulation_queue = queue.Queue()
 MODE = "REPLAY"  # REPLAY | LIVE | SIMULATION
 ACTIVE_SOURCE = None   # e.g. "BINANCE"
@@ -314,7 +414,7 @@ processed_snapshot_queue = queue.Queue(maxsize=PROCESSED_QUEUE_SIZE)
 class AdaptiveProcessor:
     """Adaptive analytics processor that handles slow engines gracefully"""
     def __init__(self):
-        self.processing_times = []
+        self.processing_times = deque(maxlen=20)
         self.slow_processing_threshold = 100  # ms
         self.adaptive_mode = False
         self.skip_counter = 0
@@ -336,13 +436,10 @@ class AdaptiveProcessor:
         """Record processing time and adjust adaptive mode"""
         self.processing_times.append(processing_time_ms)
         
-        # Keep only recent samples
-        if len(self.processing_times) > 20:
-            self.processing_times.pop(0)
-        
         # Calculate average processing time
         if len(self.processing_times) >= 5:
-            avg_time = sum(self.processing_times[-5:]) / 5
+            last_5 = list(self.processing_times)[-5:]
+            avg_time = sum(last_5) / 5
             
             # Enter adaptive mode if processing is consistently slow
             if avg_time > self.slow_processing_threshold and not self.adaptive_mode:
@@ -468,6 +565,11 @@ async def session_analytics_worker_async(session: UserSession):
                 if strategy_update:
                     processed['strategy'] = strategy_update
             
+            # === CUSTOM ALERTS ===
+            triggered_alerts = alert_system.evaluate(session.session_id, processed)
+            if triggered_alerts:
+                processed['custom_alerts'] = triggered_alerts
+            
             # Also update global buffer for backward compatibility
             data_buffer.append(processed)
             
@@ -514,7 +616,7 @@ async def session_replay_loop(session: UserSession):
                 
                 # Refill buffer if empty
                 if not session.replay_buffer:
-                    last_ts = session.cursor_ts or datetime.min
+                    last_ts = session.cursor_ts or datetime(2020, 1, 1)
                     
                     try:
                         rows = await conn.fetch(QUERY_BATCH, last_ts, REPLAY_BATCH_SIZE)
@@ -542,6 +644,7 @@ async def session_replay_loop(session: UserSession):
                 # Pop next row
                 row = session.replay_buffer.popleft()
                 session.cursor_ts = row["ts"]
+                session.last_activity = datetime.now()
                 
                 snapshot = db_row_to_snapshot(row)
                 
@@ -590,6 +693,7 @@ async def session_broadcast_loop(session: UserSession):
                 processed, processing_time = session.processed_snapshot_queue.get_nowait()
                 
                 session.data_buffer.append(processed)
+                session.last_activity = datetime.now()
                 
                 # Send to this session only
                 message = {**processed, "type": "snapshot"}
@@ -602,6 +706,14 @@ async def session_broadcast_loop(session: UserSession):
                         "data": processed["strategy"]["trade_event"]
                     }
                     await manager.send_to_session(session.session_id, trade_msg)
+                
+                # Check for triggered custom alerts and broadcast separately
+                if "custom_alerts" in processed and processed["custom_alerts"]:
+                    alert_msg = {
+                        "type": "custom_alerts",
+                        "data": processed["custom_alerts"]
+                    }
+                    await manager.send_to_session(session.session_id, alert_msg)
                 
                 metrics.record_snapshot(processing_time, processing_time)
             
@@ -715,6 +827,7 @@ async def session_csv_replay_loop(session: UserSession, csv_path: str):
                 
                 try:
                     session.raw_snapshot_queue.put_nowait(snapshot)
+                    session.last_activity = datetime.now()
                 except queue.Full:
                     await asyncio.sleep(0.01)
                     
@@ -734,14 +847,12 @@ async def broadcast_loop():
         try:
             while not simulation_queue.empty():
                 snapshot = simulation_queue.get_nowait()
-                
+
                 data_buffer.append(snapshot)
-                if len(data_buffer) > MAX_BUFFER:
-                    data_buffer.pop(0)
-                
+
                 msg = {**snapshot, "type": "snapshot"}
                 await manager.broadcast(msg)
-            
+
             await asyncio.sleep(0.01)
         except Exception as e:
             logger.error(f"Broadcast error: {e}")
@@ -755,12 +866,6 @@ async def processed_broadcast_loop():
                 processed, processing_time = processed_snapshot_queue.get_nowait()
 
                 data_buffer.append(processed)
-                if len(data_buffer) > MAX_BUFFER:
-                    data_buffer.pop(0)
-
-                # Trim buffer if exceeds max size
-                if len(data_buffer) > MAX_BUFFER_SIZE:
-                    data_buffer.pop(0)
 
                 msg = {**processed, "type": "snapshot"}
                 await manager.broadcast(msg)
@@ -835,21 +940,17 @@ async def live_data_dispatcher():
                 continue
                 
             # Broadcast to all active sessions
-            active_count = 0
-            # Snapshot list of sessions to avoid runtime modification issues
-            current_sessions = list(session_manager.sessions.values())
-            
+            async with session_manager._lock:
+                current_sessions = list(session_manager.sessions.values())
+
             for session in current_sessions:
                 if session.is_active():
                     try:
                         session.raw_snapshot_queue.put_nowait(snapshot)
-                        active_count += 1
-                    except queue.Full:
-                        pass # Drop if full to prevent blocking
+                    except (queue.Full, AttributeError):
+                        pass
             
             # Also update global buffer for /features API
-            if len(data_buffer) >= MAX_BUFFER_SIZE:
-                data_buffer.pop(0)
             data_buffer.append(snapshot)
             
         except Exception as e:
@@ -864,7 +965,7 @@ async def live_grpc_loop():
     while True:  # Retry loop
         try:
             logger.info("Attempting to connect to market_ingestor...")
-            async with grpc.aio.insecure_channel("localhost:6000") as channel:
+            async with grpc.aio.insecure_channel(f"{MARKET_INGESTOR_HOST}:{MARKET_INGESTOR_PORT}") as channel:
                 stub = live_pb2_grpc.LiveFeedServiceStub(channel)
                 logger.info("Connected to market_ingestor gRPC service")
 
@@ -1106,7 +1207,10 @@ async def download_report(filename: str):
     if not filename.endswith('.csv') or not filename.startswith('trades_'):
         return {"error": "Invalid filename"}
     
-    filepath = os.path.join("reports", filename)
+    reports_dir = os.path.realpath("reports")
+    filepath = os.path.realpath(os.path.join("reports", filename))
+    if not filepath.startswith(reports_dir + os.sep):
+        return {"error": "Invalid filename"}
     
     if not os.path.exists(filepath):
         return {"error": "File not found"}
@@ -1149,9 +1253,6 @@ async def live_snapshot_ingest(snapshot: dict):
 # --------------------------------------------------
 # Startup Hook
 # --------------------------------------------------
-        logger.warning("Database close timed out")
-    except Exception as e:
-        logger.error(f"Error during shutdown: {e}")
 
 
 # --------------------------------------------------
@@ -1242,11 +1343,14 @@ async def stop_replay(session_id: str):
     return {"status": "stopped", **session.get_state()}
 
 @app.post("/replay/{session_id}/speed/{value}")
-async def set_speed(session_id: str, value: int):
+async def set_speed(
+    session_id: str,
+    value: int = Path(..., ge=1, le=10, description="Replay speed multiplier (1x-10x)")
+):
     session = await session_manager.get_session(session_id)
     if not session:
         return {"status": "error", "message": "Session not found"}
-    
+
     session.set_speed(value)
     return {"status": "success", "speed": session.speed, **session.get_state()}
 
@@ -1311,7 +1415,7 @@ async def set_mode(payload: dict):
         
         # Notify market_ingestor about symbol change
         try:
-            async with grpc.aio.insecure_channel("localhost:6000") as channel:
+            async with grpc.aio.insecure_channel(f"{MARKET_INGESTOR_HOST}:{MARKET_INGESTOR_PORT}") as channel:
                 stub = live_pb2_grpc.LiveFeedServiceStub(channel)
                 response = await stub.ChangeSymbol(
                     live_pb2.ChangeSymbolRequest(symbol=ACTIVE_SYMBOL)
@@ -1337,20 +1441,39 @@ async def set_mode(payload: dict):
 # --------------------------------------------------
 @app.get("/features")
 def get_features():
-    return data_buffer
+    return data_buffer.get_all()
 
 @app.get("/anomalies")
 def get_anomalies():
+    ALLOWED_KEYS = {
+        "LIQUIDITY_GAP": {"gap_count", "affected_levels", "total_gap_volume", "gap_severity_score"},
+        "SPOOFING": {"volume_ratio", "price_level", "side", "risk_score"},
+        "LAYERING": {"side", "score", "large_order_count"},
+        "QUOTE_STUFFING": {"update_rate", "avg_rate"},
+        "MOMENTUM_IGNITION": {"price_change_pct", "volume", "direction"},
+        "WASH_TRADING": {"avg_volume", "volume_variance", "pattern_count"},
+        "ICEBERG_ORDER": {"price", "side", "fill_count", "total_volume", "avg_fill_size"},
+        "HEAVY_IMBALANCE": {"side", "severity_score"},
+        "SPREAD_SHOCK": {"spread_value", "avg_spread"},
+        "DEPTH_SHOCK": {"depth_loss_percent"},
+        "RAPID_TRADING": {"trade_count", "avg_interval_ms"},
+        "UNUSUAL_TRADE_SIZE": {"trade_volume", "avg_volume", "z_score"},
+        "DATA_VALIDATION_ERROR": set(),
+    }
+
     anomalies = []
-    for snap in data_buffer:
+    for snap in data_buffer.get_all():
         if "anomalies" in snap:
             for a in snap["anomalies"]:
+                anomaly_type = a.get("type", "UNKNOWN")
+                allowed_keys = ALLOWED_KEYS.get(anomaly_type, set())
+                safe_extras = {k: v for k, v in a.items() if k in allowed_keys}
                 anomalies.append({
                     "timestamp": snap.get("timestamp"),
-                    "type": a.get("type"),
+                    "type": anomaly_type,
                     "severity": a.get("severity"),
                     "message": a.get("message"),
-                    **{k: v for k, v in a.items() if k not in ["type", "severity", "message"]}
+                    **safe_extras
                 })
     return anomalies
 
@@ -1358,7 +1481,7 @@ def get_anomalies():
 def get_liquidity_gaps():
     """Get recent liquidity gap events with detailed information."""
     gaps = []
-    for snap in data_buffer:
+    for snap in data_buffer.get_all():
         if "anomalies" in snap:
             for a in snap["anomalies"]:
                 if a.get("type") == "LIQUIDITY_GAP":
@@ -1377,7 +1500,7 @@ def get_liquidity_gaps():
 def get_spoofing_events():
     """Get recent spoofing-like behavior events."""
     spoofing = []
-    for snap in data_buffer:
+    for snap in data_buffer.get_all():
         if "anomalies" in snap:
             for a in snap["anomalies"]:
                 if a.get("type") == "SPOOFING":
@@ -1406,7 +1529,7 @@ def get_alert_stats():
 def get_quote_stuffing_events():
     """Get recent quote stuffing events (rapid order fire/cancel)."""
     events = []
-    for snap in data_buffer:
+    for snap in data_buffer.get_all():
         if "anomalies" in snap:
             for a in snap["anomalies"]:
                 if a.get("type") == "QUOTE_STUFFING":
@@ -1424,7 +1547,7 @@ def get_quote_stuffing_events():
 def get_layering_events():
     """Get recent layering/spoofing events (stacked fake orders)."""
     events = []
-    for snap in data_buffer:
+    for snap in data_buffer.get_all():
         if "anomalies" in snap:
             for a in snap["anomalies"]:
                 if a.get("type") == "LAYERING":
@@ -1443,7 +1566,7 @@ def get_layering_events():
 def get_momentum_ignition_events():
     """Get recent momentum ignition events (aggressive orders triggering algos)."""
     events = []
-    for snap in data_buffer:
+    for snap in data_buffer.get_all():
         if "anomalies" in snap:
             for a in snap["anomalies"]:
                 if a.get("type") == "MOMENTUM_IGNITION":
@@ -1462,7 +1585,7 @@ def get_momentum_ignition_events():
 def get_wash_trading_events():
     """Get recent wash trading events (self-trading patterns)."""
     events = []
-    for snap in data_buffer:
+    for snap in data_buffer.get_all():
         if "anomalies" in snap:
             for a in snap["anomalies"]:
                 if a.get("type") == "WASH_TRADING":
@@ -1481,7 +1604,7 @@ def get_wash_trading_events():
 def get_iceberg_order_events():
     """Get recent iceberg order detections (hidden large orders)."""
     events = []
-    for snap in data_buffer:
+    for snap in data_buffer.get_all():
         if "anomalies" in snap:
             for a in snap["anomalies"]:
                 if a.get("type") == "ICEBERG_ORDER":
@@ -1511,7 +1634,7 @@ def get_anomalies_summary():
         "liquidity_gaps": 0
     }
     
-    for snap in data_buffer:
+    for snap in data_buffer.get_all():
         if "anomalies" in snap:
             for a in snap["anomalies"]:
                 anomaly_type = a.get("type", "").lower().replace("_", "")
@@ -1534,9 +1657,7 @@ def get_anomalies_summary():
 
 @app.get("/snapshot/latest")
 def get_latest_snapshot():
-    if not data_buffer:
-        return {}
-    return data_buffer[-1]
+    return data_buffer.get_latest() or {}
 
 # --------------------------------------------------
 # Monitoring Endpoints
@@ -1743,7 +1864,7 @@ async def run_benchmark():
 def get_trade_classification():
     """Get recent trade classifications (buy/sell side)."""
     trades = []
-    for snap in data_buffer[-100:]:  # Last 100 snapshots
+    for snap in data_buffer.get_last(100):  # Last 100 snapshots
         if snap.get("trade_classified"):
             trades.append({
                 "timestamp": snap.get("timestamp"),
@@ -1759,7 +1880,7 @@ def get_trade_classification():
 def get_trade_spreads():
     """Get effective and realized spreads over time."""
     spreads = []
-    for snap in data_buffer[-100:]:
+    for snap in data_buffer.get_last(100):
         if snap.get("trade_classified"):
             spreads.append({
                 "timestamp": snap.get("timestamp"),
@@ -1804,7 +1925,7 @@ def get_trade_spreads():
 def get_vpin():
     """Get V-PIN (Volume-Synchronized Probability of Informed Trading) history."""
     vpin_data = []
-    for snap in data_buffer[-100:]:
+    for snap in data_buffer.get_last(100):
         if "vpin" in snap and snap["vpin"] > 0:
             vpin_data.append({
                 "timestamp": snap.get("timestamp"),
@@ -1841,7 +1962,7 @@ def get_vpin():
 def get_trade_anomalies():
     """Get trade-level anomalies (unusual sizes, rapid trading, etc.)."""
     trade_anomalies = []
-    for snap in data_buffer[-100:]:
+    for snap in data_buffer.get_last(100):
         if "anomalies" in snap:
             for a in snap["anomalies"]:
                 if a.get("type") in ["UNUSUAL_TRADE_SIZE", "RAPID_TRADING"]:
@@ -1859,3 +1980,159 @@ def get_trade_anomalies():
         "anomalies": trade_anomalies,
         "count": len(trade_anomalies)
     }
+
+# --------------------------------------------------
+# Enhancements 1-15 API Endpoints
+# --------------------------------------------------
+
+@app.post("/strategy/{session_id}/config")
+def update_strategy_config(session_id: str, payload: dict):
+    strategy = strategy_manager.get_or_create(session_id)
+    for strategy_key, params in payload.items():
+        strategy.set_config(strategy_key, params)
+    return {"status": "success", "message": "Configuration updated successfully"}
+
+@app.get("/strategy/{session_id}/config")
+def get_strategy_config(session_id: str):
+    strategy = strategy_manager.get_or_create(session_id)
+    configs = {name: s.config for name, s in strategy.strategies.items()}
+    return {"status": "success", "config": configs}
+
+@app.post("/strategy/{session_id}/profile")
+def save_or_load_profile(session_id: str, payload: dict):
+    action = payload.get("action")  # "save" or "load"
+    profile_name = payload.get("name", "default")
+    strategy = strategy_manager.get_or_create(session_id)
+    
+    self_dir = os.path.dirname(os.path.abspath(__file__))
+    profile_path = os.path.join(self_dir, f"reports/strategy_profile_{profile_name}.json")
+    
+    if action == "save":
+        configs = {name: s.config for name, s in strategy.strategies.items()}
+        os.makedirs(os.path.dirname(profile_path), exist_ok=True)
+        with open(profile_path, "w") as f:
+            json.dump(configs, f)
+        return {"status": "success", "message": f"Saved profile {profile_name}"}
+    elif action == "load":
+        if not os.path.exists(profile_path):
+            return {"status": "error", "message": f"Profile {profile_name} not found"}
+        with open(profile_path, "r") as f:
+            configs = json.load(f)
+        for key, params in configs.items():
+            strategy.set_config(key, params)
+        return {"status": "success", "message": f"Loaded profile {profile_name}"}
+    return {"status": "error", "message": "Invalid action"}
+
+@app.get("/replay/{session_id}/metadata")
+async def get_replay_metadata(session_id: str):
+    conn = None
+    try:
+        conn = await get_connection()
+        row = await conn.fetchrow("SELECT COUNT(*), MIN(ts), MAX(ts) FROM l2_orderbook")
+        total_records = row[0] if row else 0
+        min_ts = row[1].isoformat() if row and row[1] else None
+        max_ts = row[2].isoformat() if row and row[2] else None
+        
+        # Fetch mock anomaly timestamps for timeline markers
+        anomaly_rows = await conn.fetch("SELECT DISTINCT ts FROM l2_orderbook ORDER BY ts LIMIT 15")
+        anomaly_ts = [r[0].isoformat() for r in anomaly_rows]
+        
+        return {
+            "status": "success",
+            "total_records": total_records,
+            "start_time": min_ts,
+            "end_time": max_ts,
+            "anomaly_markers": anomaly_ts
+        }
+    except Exception as e:
+        logger.error(f"Error fetching replay metadata: {e}")
+        return {"status": "error", "message": str(e)}
+    finally:
+        if conn:
+            await return_connection(conn)
+
+@app.post("/replay/{session_id}/seek")
+def seek_replay(session_id: str, payload: dict):
+    timestamp_str = payload.get("timestamp")
+    if not timestamp_str:
+        return {"status": "error", "message": "Missing timestamp parameter"}
+        
+    session = session_manager.get_session(session_id)
+    if not session:
+        return {"status": "error", "message": "Session not found"}
+        
+    try:
+        # standard ISO format parsing
+        dt_str = timestamp_str.replace('Z', '+00:00')
+        target_dt = datetime.fromisoformat(dt_str)
+        session.cursor_ts = target_dt
+        session.replay_buffer.clear()
+        return {"status": "success", "message": f"Seeked to {timestamp_str}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/lab/correlations")
+def get_lab_correlations():
+    snaps = data_buffer.get_last(100)
+    if not snaps:
+        return {"correlations": [], "features": []}
+        
+    metrics_list = []
+    for s in snaps:
+        bids = s.get("bids", [])
+        asks = s.get("asks", [])
+        best_bid = bids[0][0] if bids else 0.0
+        best_ask = asks[0][0] if asks else 0.0
+        spread = best_ask - best_bid
+        
+        metrics_list.append({
+            "Mid Price": s.get("mid_price", 0),
+            "Spread": spread,
+            "VPIN": s.get("vpin", 0),
+            "OFI": s.get("obi", 0),
+            "Spoof Risk": s.get("spoofing_risk", 0),
+            "Volatility": s.get("volatility_10s", 0),
+            "GARCH Vol": s.get("garch_volatility", 0),
+            "Gap Severity": s.get("gap_severity_score", 0)
+        })
+        
+    df = pd.DataFrame(metrics_list)
+    corr = df.corr().fillna(0).to_numpy().tolist()
+    features = list(df.columns)
+    
+    return {
+        "correlations": corr,
+        "features": features
+    }
+
+@app.post("/alerts/rules")
+def add_alert_rule(payload: dict):
+    session_id = payload.get("session_id")
+    metric = payload.get("metric_name")
+    op = payload.get("operator")
+    threshold = payload.get("threshold_value")
+    
+    if not all([session_id, metric, op, threshold is not None]):
+        return {"status": "error", "message": "Missing required fields"}
+        
+    rule = alert_system.add_rule(session_id, metric, op, threshold)
+    return {"status": "success", "rule": rule}
+
+@app.get("/alerts/rules/{session_id}")
+def get_alert_rules(session_id: str):
+    rules = alert_system.get_rules(session_id)
+    return {"status": "success", "rules": rules}
+
+@app.delete("/alerts/rules/{session_id}")
+def clear_alert_rules(session_id: str):
+    alert_system.clear_rules(session_id)
+    return {"status": "success", "message": "Rules cleared"}
+
+@app.get("/alerts/history/{session_id}")
+def get_alert_history(session_id: str):
+    history = alert_system.get_history(session_id)
+    return {"status": "success", "history": history}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

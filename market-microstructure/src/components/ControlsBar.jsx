@@ -1,21 +1,13 @@
-import { useState } from "react";
-import { 
-  Download, 
-  SkipBack, 
-  FastForward, 
-  Pause, 
-  Settings, 
-  Clock, 
-  FileText, 
-  FileJson,
-  Play
-} from 'lucide-react';
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { Download, SkipBack, FastForward, Pause, Settings, Clock, FileText, FileJson, Play } from 'lucide-react';
+import { useAuth } from "../contexts/AuthContext";
 
-export default function ControlsBar({ 
-  onPlay, 
-  onPause, 
-  onResume, 
-  onStop, 
+export default function ControlsBar({
+  onPlay,
+  onPause,
+  onResume,
+  onStop,
   onSpeed,
   onGoBack,
   isPlaying = false,
@@ -24,8 +16,9 @@ export default function ControlsBar({
   currentTimestamp = null,
   currentMode = "REPLAY",
   showToast,
-  data = [] // Add data prop for downloads
+  data = []
 }) {
+  const { sessionId } = useAuth();
   const [speed, setSpeed] = useState(currentSpeed);
   const [speedUpValue, setSpeedUpValue] = useState(2);
   const [goBackSeconds, setGoBackSeconds] = useState(1);
@@ -34,6 +27,49 @@ export default function ControlsBar({
   const [tempGoBack, setTempGoBack] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const [metadata, setMetadata] = useState(null);
+
+  useEffect(() => {
+    if (currentMode === "REPLAY" && sessionId) {
+      const BACKEND_HTTP = import.meta.env.VITE_BACKEND_HTTP || "http://localhost:8000";
+      fetch(`${BACKEND_HTTP}/replay/${sessionId}/metadata`, { credentials: 'include' })
+        .then(r => r.json())
+        .then(d => {
+          if (d.status === "success") setMetadata(d);
+        })
+        .catch(console.error);
+    }
+  }, [currentMode, sessionId]);
+
+  const handleSeek = (val) => {
+    if (!metadata || !sessionId) return;
+    const startMs = new Date(metadata.start_time).getTime();
+    const endMs = new Date(metadata.end_time).getTime();
+    const targetMs = startMs + (val / 100) * (endMs - startMs);
+    const targetIso = new Date(targetMs).toISOString();
+
+    const BACKEND_HTTP = import.meta.env.VITE_BACKEND_HTTP || "http://localhost:8000";
+    fetch(`${BACKEND_HTTP}/replay/${sessionId}/seek`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ timestamp: targetIso }),
+      credentials: 'include'
+    }).then(r => r.json())
+      .then(res => {
+        if (res.status === "success" && showToast) {
+          showToast(`Seeked to ${new Date(targetMs).toLocaleTimeString()}`, 'success');
+        }
+      }).catch(console.error);
+  };
+
+  const getSliderValue = () => {
+    if (!metadata || !currentTimestamp) return 0;
+    const startMs = new Date(metadata.start_time).getTime();
+    const endMs = new Date(metadata.end_time).getTime();
+    const currMs = new Date(currentTimestamp).getTime();
+    if (endMs === startMs) return 0;
+    return ((currMs - startMs) / (endMs - startMs)) * 100;
+  };
 
   const handlePlayPause = async () => {
     setIsLoading(true);
@@ -94,7 +130,6 @@ export default function ControlsBar({
     }
 
     try {
-      // Get all unique keys from all snapshots
       const allKeys = new Set();
       data.forEach(snapshot => {
         Object.keys(snapshot).forEach(key => {
@@ -105,10 +140,8 @@ export default function ControlsBar({
       });
 
       const headers = Array.from(allKeys).sort();
-      
-      // Create CSV content
       let csv = headers.join(",") + "\n";
-      
+
       data.forEach(snapshot => {
         const row = headers.map(header => {
           const value = snapshot[header];
@@ -119,7 +152,6 @@ export default function ControlsBar({
         csv += row.join(",") + "\n";
       });
 
-      // Download
       const blob = new Blob([csv], { type: "text/csv" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -197,78 +229,75 @@ export default function ControlsBar({
     <>
       <div style={{
         display: 'flex',
-        gap: '8px',
-        padding: '8px',
+        gap: '4px',
+        alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(0, 20, 0, 0.6)',
-        borderRadius: '0',
-        border: '1px solid rgba(0, 255, 127, 0.3)',
-        opacity: isLoading ? 0.6 : 1,
-        pointerEvents: isLoading ? 'none' : 'auto',
-        backdropFilter: 'blur(8px)',
-        fontFamily: "'Orbitron', monospace"
+        flexWrap: 'wrap'
       }}>
         {/* Current Timestamp Display */}
         {currentTimestamp && (
           <div style={{
-            padding: '6px 12px',
-            backgroundColor: 'rgba(0, 20, 0, 0.8)',
-            borderRadius: '0',
-            fontSize: '12px',
-            color: '#00ff7f',
-            fontFamily: "'Orbitron', monospace",
-            fontWeight: '600',
-            marginRight: '8px',
             display: 'flex',
             alignItems: 'center',
-            gap: '5px',
+            gap: '6px',
+            padding: '10px 10px',
+            backgroundColor: 'rgba(0, 255, 127, 0.1)',
             border: '1px solid rgba(0, 255, 127, 0.3)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
+            color: '#00ff7f',
+            fontFamily: "'Orbitron', monospace",
+            fontSize: '11px',
+            fontWeight: '700',
+            letterSpacing: '0.5px',
+            boxShadow: '0 0 10px rgba(0, 255, 127, 0.2)'
           }}>
-            <Clock size={14} /> {formatTimestamp(currentTimestamp)}
+            <Clock size={14} />
+            {formatTimestamp(currentTimestamp)}
           </div>
         )}
-        
+
         {/* Replay Controls - Only show in REPLAY mode */}
         {currentMode === "REPLAY" && (
           <>
             {/* Play/Pause Button */}
-            <button 
+            <button
               onClick={handlePlayPause}
+              disabled={isLoading}
               style={{
                 ...buttonStyle,
-                backgroundColor: isPlaying ? 'rgba(255, 50, 50, 0.2)' : 'rgba(0, 255, 127, 0.2)',
-                borderColor: isPlaying ? '#ff3232' : '#00ff7f',
-                color: isPlaying ? '#ff3232' : '#00ff7f',
-                boxShadow: isPlaying ? '0 0 15px rgba(255, 50, 50, 0.3)' : '0 0 15px rgba(0, 255, 127, 0.3)'
+                opacity: isLoading ? 0.5 : 1
               }}
-              title={isPlaying ? 'Pause' : (isPaused ? 'Resume' : 'Play')}
+              title={isPlaying ? "Pause" : isPaused ? "Resume" : "Play"}
             >
-              {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+              {isPlaying ? <Pause size={18} /> : <Play size={18} />}
             </button>
 
             {/* Speed Toggle Button */}
-            <button 
+            <button
               onClick={handleSpeedToggle}
+              disabled={isLoading}
               style={{
                 ...buttonStyle,
                 backgroundColor: speed > 1 ? 'rgba(0, 255, 127, 0.3)' : 'rgba(0, 255, 127, 0.1)',
                 borderColor: speed > 1 ? '#00ff7f' : 'rgba(0, 255, 127, 0.3)',
-                boxShadow: speed > 1 ? '0 0 20px rgba(0, 255, 127, 0.4)' : '0 0 10px rgba(0, 255, 127, 0.2)'
+                boxShadow: speed > 1 ? '0 0 20px rgba(0, 255, 127, 0.4)' : '0 0 10px rgba(0, 255, 127, 0.2)',
+                opacity: isLoading ? 0.5 : 1
               }}
               title={`Speed: ${speed}x (Toggle to ${speed === 1 ? speedUpValue : 1}x)`}
             >
-              <FastForward size={16} />
+              <FastForward size={18} />
             </button>
 
             {/* Go Back Button */}
-            <button 
+            <button
               onClick={handleGoBack}
-              style={buttonStyle}
+              disabled={isLoading}
+              style={{
+                ...buttonStyle,
+                opacity: isLoading ? 0.5 : 1
+              }}
               title={`Go back ${goBackSeconds}s`}
             >
-              <SkipBack size={16} />
+              <SkipBack size={18} />
             </button>
           </>
         )}
@@ -276,27 +305,27 @@ export default function ControlsBar({
         {/* LIVE Mode Indicator */}
         {currentMode === "LIVE" && (
           <div style={{
-            padding: '6px 12px',
-            backgroundColor: 'rgba(255, 50, 50, 0.1)',
-            borderRadius: '0',
-            fontSize: '12px',
-            color: '#ff3232',
-            fontWeight: '700',
-            fontFamily: "'Orbitron', monospace",
-            marginRight: '8px',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            border: '1px solid rgba(255, 50, 50, 0.4)',
-            textTransform: 'uppercase',
-            letterSpacing: '1px'
+            padding: '10px 12px',
+            backgroundColor: 'rgba(255, 0, 0, 0.2)',
+            border: '1px solid rgba(255, 0, 0, 0.5)',
+            color: '#ff0000',
+            fontFamily: "'Orbitron', monospace",
+            fontSize: '11px',
+            fontWeight: '700',
+            letterSpacing: '1px',
+            boxShadow: '0 0 15px rgba(255, 0, 0, 0.3)',
+            animation: 'pulse 2s ease-in-out infinite'
           }}>
             <div style={{
-              width: '6px',
-              height: '6px',
-              backgroundColor: '#ff3232',
+              width: '8px',
+              height: '8px',
               borderRadius: '50%',
-              animation: 'cyber-pulse-dot 2s infinite'
+              backgroundColor: '#ff0000',
+              boxShadow: '0 0 10px rgba(255, 0, 0, 0.8)',
+              animation: 'blink 1s ease-in-out infinite'
             }} />
             LIVE STREAMING
           </div>
@@ -304,7 +333,7 @@ export default function ControlsBar({
 
         {/* Download Button with Dropdown */}
         <div style={{ position: 'relative' }}>
-          <button 
+          <button
             onClick={() => setShowDownloadMenu(!showDownloadMenu)}
             style={{
               ...buttonStyle,
@@ -314,139 +343,207 @@ export default function ControlsBar({
             }}
             title="Download data"
           >
-            <Download size={16} />
+            <Download size={18} />
           </button>
 
-          {/* Download Dropdown Menu */}
-          {showDownloadMenu && (
+          {/* Download Dropdown Menu - Using Portal */}
+          {showDownloadMenu && createPortal(
             <div style={{
-              position: 'absolute',
-              top: '100%',
+              position: 'fixed',
+              top: 0,
+              left: 0,
               right: 0,
-              marginBottom: '4px',
-              backgroundColor: 'rgba(0, 20, 0, 0.95)',
-              border: '1px solid rgba(0, 255, 127, 0.4)',
-              borderRadius: '0',
-              overflow: 'hidden',
-              zIndex: 1000,
-              boxShadow: '0 -4px 12px rgba(0, 255, 127, 0.2)',
-              minWidth: '120px',
-              backdropFilter: 'blur(12px)'
-            }}>
-              <button
-                onClick={handleDownloadCSV}
+              bottom: 0,
+              zIndex: 9999
+            }}
+            onClick={() => setShowDownloadMenu(false)}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
                 style={{
-                  width: '100%',
-                  padding: '10px 16px',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  color: '#00ff7f',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  fontFamily: "'Orbitron', monospace",
-                  textAlign: 'left',
-                  transition: 'background-color 0.3s',
-                  borderBottom: '1px solid rgba(0, 255, 127, 0.2)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
+                  position: 'absolute',
+                  top: '120px', // Adjust based on where your download button is
+                  right: '24px', // Adjust based on where your download button is
+                  backgroundColor: 'rgba(0, 20, 0, 0.95)',
+                  border: '1px solid rgba(0, 255, 127, 0.5)',
+                  boxShadow: '0 0 30px rgba(0, 255, 127, 0.3)',
+                  backdropFilter: 'blur(10px)',
+                  minWidth: '150px',
+                  zIndex: 10000
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0, 255, 127, 0.1)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
-                <FileText size={14} /> CSV
-              </button>
-              <button
-                onClick={handleDownloadJSON}
-                style={{
-                  width: '100%',
-                  padding: '10px 16px',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  color: '#00ff7f',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  fontFamily: "'Orbitron', monospace",
-                  textAlign: 'left',
-                  transition: 'background-color 0.3s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0, 255, 127, 0.1)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <FileJson size={14} /> JSON
-              </button>
-            </div>
+                <button
+                  onClick={handleDownloadCSV}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    backgroundColor: 'transparent',
+                    color: '#00ff7f',
+                    border: 'none',
+                    borderBottom: '1px solid rgba(0, 255, 127, 0.2)',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontFamily: "'Orbitron', monospace",
+                    fontWeight: '600',
+                    letterSpacing: '0.5px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0, 255, 127, 0.1)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <FileText size={14} />
+                  CSV
+                </button>
+                <button
+                  onClick={handleDownloadJSON}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    backgroundColor: 'transparent',
+                    color: '#00ff7f',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontFamily: "'Orbitron', monospace",
+                    fontWeight: '600',
+                    letterSpacing: '0.5px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0, 255, 127, 0.1)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <FileJson size={14} />
+                  JSON
+                </button>
+              </div>
+            </div>,
+            document.body
           )}
         </div>
 
         {/* Settings Button - Only show in REPLAY mode */}
         {currentMode === "REPLAY" && (
-          <button 
+          <button
             onClick={() => setShowModal(true)}
             style={buttonStyle}
             title="Settings"
           >
-            <Settings size={16} />
+            <Settings size={18} />
           </button>
+        )}
+
+        {/* Timeline Scrubber */}
+        {currentMode === "REPLAY" && metadata && (
+          <div style={{ width: "100%", marginTop: "12px", display: "flex", flexDirection: "column", gap: "4px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "9px", color: "#64748b", fontFamily: "'Orbitron', monospace" }}>
+              <span>{formatTimestamp(metadata.start_time)}</span>
+              <span>{formatTimestamp(metadata.end_time)}</span>
+            </div>
+            <div style={{ position: "relative", width: "100%", height: "20px", display: "flex", alignItems: "center" }}>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={getSliderValue()}
+                onChange={(e) => handleSeek(parseFloat(e.target.value))}
+                style={{ width: "100%", accentColor: "#00ff7f", cursor: "pointer", height: "4px", background: "rgba(255,255,255,0.1)", outline: "none" }}
+              />
+              {metadata.anomaly_markers && metadata.anomaly_markers.map((mark, idx) => {
+                const startMs = new Date(metadata.start_time).getTime();
+                const endMs = new Date(metadata.end_time).getTime();
+                const markMs = new Date(mark).getTime();
+                const percent = ((markMs - startMs) / (endMs - startMs)) * 100;
+                if (percent >= 0 && percent <= 100) {
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        position: "absolute",
+                        left: `${percent}%`,
+                        top: "50%",
+                        transform: "translate(-50%, -50%)",
+                        width: "4px",
+                        height: "10px",
+                        background: "#ff3232",
+                        pointerEvents: "none"
+                      }}
+                      title="Anomaly Event"
+                    />
+                  );
+                }
+                return null;
+              })}
+            </div>
+          </div>
         )}
       </div>
 
-      {/* Click outside to close download menu */}
-      {showDownloadMenu && (
+      {/* Settings Modal - Using Portal */}
+      {showModal && createPortal(
         <div
           style={{
             position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 999
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            backdropFilter: 'blur(5px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '20px'
           }}
-          onClick={() => setShowDownloadMenu(false)}
-        />
-      )}
+          onClick={() => setShowModal(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'rgba(0, 20, 0, 0.95)',
+              border: '2px solid rgba(0, 255, 127, 0.5)',
+              boxShadow: '0 0 50px rgba(0, 255, 127, 0.3)',
+              backdropFilter: 'blur(10px)',
+              padding: '24px',
+              maxWidth: '500px',
+              width: '100%'
+            }}
+          >
+            <h2 style={{
+              margin: '0 0 20px 0',
+              color: '#00ff7f',
+              fontFamily: "'Orbitron', monospace",
+              fontSize: '18px',
+              fontWeight: '700',
+              letterSpacing: '1px',
+              textTransform: 'uppercase',
+              borderBottom: '2px solid rgba(0, 255, 127, 0.3)',
+              paddingBottom: '10px'
+            }}>
+              Settings
+            </h2>
 
-      {/* Settings Modal */}
-      {showModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }} onClick={() => setShowModal(false)}>
-          <div style={{
-            backgroundColor: 'rgba(0, 20, 0, 0.95)',
-            padding: '20px',
-            borderRadius: '0',
-            border: '1px solid rgba(0, 255, 127, 0.4)',
-            minWidth: '280px',
-            boxShadow: '0 8px 16px rgba(0, 255, 127, 0.2)',
-            backdropFilter: 'blur(12px)',
-            fontFamily: "'Orbitron', monospace"
-          }} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ margin: '0 0 16px 0', color: '#00ff7f', fontSize: '16px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>Settings</h3>
-            
             {/* Speed Selection */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', color: '#00ff7f', fontSize: '12px', marginBottom: '8px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                color: '#00ff7f',
+                fontFamily: "'Orbitron', monospace",
+                fontSize: '12px',
+                fontWeight: '600',
+                letterSpacing: '0.5px'
+              }}>
                 Speed Up Value
               </label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                flexWrap: 'wrap'
+              }}>
                 {[0.5, 1, 2, 3, 5, 10].map(val => (
                   <button
                     key={val}
@@ -474,8 +571,16 @@ export default function ControlsBar({
             </div>
 
             {/* Go Back Input */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', color: '#00ff7f', fontSize: '12px', marginBottom: '8px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                color: '#00ff7f',
+                fontFamily: "'Orbitron', monospace",
+                fontSize: '12px',
+                fontWeight: '600',
+                letterSpacing: '0.5px'
+              }}>
                 Go Back (seconds)
               </label>
               <input
@@ -506,23 +611,24 @@ export default function ControlsBar({
                 width: '100%',
                 padding: '10px',
                 fontSize: '13px',
-                fontWeight: '700',
-                fontFamily: "'Orbitron', monospace",
                 backgroundColor: 'rgba(0, 255, 127, 0.2)',
                 color: '#00ff7f',
                 border: '1px solid #00ff7f',
                 borderRadius: '0',
                 cursor: 'pointer',
+                fontFamily: "'Orbitron', monospace",
+                fontWeight: '700',
                 textTransform: 'uppercase',
-                letterSpacing: '0.5px',
+                letterSpacing: '1px',
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: '0 0 15px rgba(0, 255, 127, 0.3)'
+                boxShadow: '0 0 20px rgba(0, 255, 127, 0.3)'
               }}
             >
               Apply
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

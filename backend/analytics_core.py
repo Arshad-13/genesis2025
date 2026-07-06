@@ -524,7 +524,8 @@ class MarketSimulator:
 
 class AnalyticsEngine:
     def __init__(self):
-        self.history = []
+        self._lock = threading.RLock()
+        self.history = deque(maxlen=600)
         self.window_size = 600 
         
         # Alert Management
@@ -608,6 +609,10 @@ class AnalyticsEngine:
         self.trade_metrics_history = deque(maxlen=1000)  # Store trade metrics
     
     def detect_advanced_anomalies(self, snapshot: dict) -> list:
+        with self._lock:
+            return self._detect_advanced_anomalies(snapshot)
+
+    def _detect_advanced_anomalies(self, snapshot: dict) -> list:
         """
         Standalone method to detect advanced manipulation patterns.
         Can be called after C++ engine processing to add Python-only detection.
@@ -823,6 +828,10 @@ class AnalyticsEngine:
             self.pending_training = False
 
     def process_snapshot(self, snapshot):
+        with self._lock:
+            return self._process_snapshot(snapshot)
+
+    def _process_snapshot(self, snapshot):
         processing_start = time.time()
         
         # Validate input data
@@ -1005,12 +1014,10 @@ class AnalyticsEngine:
         
         # Feature F: Market State Clusters
         self.history.append(mid_price)
-        if len(self.history) > self.window_size:
-            self.history.pop(0)
             
         volatility = 0
         if len(self.history) > 20:
-            prices = np.array(self.history[-20:])
+            prices = np.array(list(self.history)[-20:])
             log_returns = np.diff(np.log(prices))
             volatility = np.std(log_returns) * 1000
             
@@ -1031,7 +1038,7 @@ class AnalyticsEngine:
         if len(self.feature_history) > 50:
             # Check if we need to retrain (every 10 seconds)
             should_retrain = (not self.is_fitted or 
-                            (datetime.now() - self.last_train_time).seconds > 10)
+                            (datetime.now() - self.last_train_time).total_seconds() > 10)
             
             # Trigger background training if needed and not already running
             if should_retrain and not self.training_in_progress and not self.pending_training:
@@ -1486,6 +1493,60 @@ class AnalyticsEngine:
         snapshot['gap_severity_score'] = gap_severity_score
         snapshot['spoofing_risk'] = spoofing_risk
         snapshot['volume_volatility'] = volume_volatility
+        # Realized Volatility & EWMA GARCH(1,1)
+        if not hasattr(self, '_returns_history'):
+            self._returns_history = deque(maxlen=3000)
+            self._last_mid_price = None
+            self._garch_variance = 1e-5
+
+        if self._last_mid_price is not None and self._last_mid_price > 0:
+            ret = np.log(mid_price / self._last_mid_price)
+            self._returns_history.append(ret)
+            # EWMA GARCH update
+            omega = 1e-6
+            alpha = 0.05
+            beta = 0.90
+            self._garch_variance = omega + alpha * (ret ** 2) + beta * self._garch_variance
+        self._last_mid_price = mid_price
+
+        vol_10 = 0.0
+        vol_60 = 0.0
+        vol_300 = 0.0
+        if len(self._returns_history) >= 10:
+            vol_10 = float(np.std(list(self._returns_history)[-100:]) * 1000)
+        if len(self._returns_history) >= 60:
+            vol_60 = float(np.std(list(self._returns_history)[-600:]) * 1000)
+        if len(self._returns_history) >= 300:
+            vol_300 = float(np.std(list(self._returns_history)[-3000:]) * 1000)
+
+        garch_forecast = float(np.sqrt(self._garch_variance) * 1000)
+
+        # Regime labeling
+        regime_label = "Calm"
+        z_score_spread = 0.0
+        if hasattr(self, 'avg_spread') and hasattr(self, 'avg_spread_sq'):
+            std_spread = np.sqrt(max(0, self.avg_spread_sq - self.avg_spread**2))
+            if std_spread > 1e-5:
+                z_score_spread = abs(spread - self.avg_spread) / std_spread
+        
+        # Access local ofi and spoofing_risk
+        vpin_val = snapshot.get('vpin', 0.0)
+        
+        if spoofing_risk > 0.6:
+            regime_label = "Manipulated"
+        elif z_score_spread > 2.0 or vol_10 > 2.5:
+            regime_label = "Stressed"
+        elif vpin_val > 0.5 or abs(ofi) > 200:
+            regime_label = "Trending"
+        else:
+            regime_label = "Calm"
+
+        snapshot['volatility_10s'] = vol_10
+        snapshot['volatility_60s'] = vol_60
+        snapshot['volatility_300s'] = vol_300
+        snapshot['garch_volatility'] = garch_forecast
+        snapshot['regime_label'] = regime_label
+
         snapshot['liquidity_gaps'] = liquidity_gaps  # Add detailed gap data for visualization
         
         return snapshot

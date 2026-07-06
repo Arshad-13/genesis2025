@@ -48,6 +48,19 @@ coverage/
 # Dataset
 l2_clean.csv
 
+# Reports (generated — contain trading data)
+backend/reports/
+reports/
+
+# Graphify (local-only files)
+graphify-out/cost.json
+graphify-out/*/
+graphify-out/.graphify_python
+
+# Logs
+*.log
+logs/
+
 # Build artifacts
 *.egg-info/
 dist/

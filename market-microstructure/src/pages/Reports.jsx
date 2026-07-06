@@ -190,7 +190,7 @@ const Reports = () => {
     const fetchReports = async () => {
       try {
         const BACKEND_HTTP = import.meta.env.VITE_BACKEND_HTTP || "http://localhost:8000";
-        const response = await fetch(`${BACKEND_HTTP}/reports`);
+        const response = await fetch(`${BACKEND_HTTP}/reports`, { credentials: 'include' });
         const data = await response.json();
         
         if (data.reports) {
@@ -259,7 +259,7 @@ const Reports = () => {
   const handleDownload = async (report) => {
     try {
       const BACKEND_HTTP = import.meta.env.VITE_BACKEND_HTTP || "http://localhost:8000";
-      const response = await fetch(`${BACKEND_HTTP}${report.downloadUrl}`);
+      const response = await fetch(`${BACKEND_HTTP}${report.downloadUrl}`, { credentials: 'include' });
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -298,27 +298,54 @@ const Reports = () => {
         fontFamily: RAJDHANI
       }}>
         
+        <style dangerouslySetInnerHTML={{__html: `
+          @media print {
+            body { background: #050a05 !important; color: white !important; }
+            .cyber-menu-btn, button, select, th:last-child, td:last-child { display: none !important; }
+            svg { stroke: #00ff7f !important; }
+          }
+        `}} />
+        
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "8px" }}>
-          <div style={{
-            width: "50px", height: "50px",
-            background: `${ACCENT}20`,
-            border: `1px solid ${ACCENT}40`,
-            display: "flex", alignItems: "center", justifyContent: "center"
-          }}>
-            <FileText size={24} color={ACCENT} />
-          </div>
-          <div>
-            <h1 style={{ 
-              fontFamily: ORBITRON, fontSize: "28px", fontWeight: "bold", 
-              color: "white", margin: 0, letterSpacing: "2px" 
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <div style={{
+              width: "50px", height: "50px",
+              background: `${ACCENT}20`,
+              border: `1px solid ${ACCENT}40`,
+              display: "flex", alignItems: "center", justifyContent: "center"
             }}>
-              TRADING <span style={{ color: ACCENT }}>REPORTS</span>
-            </h1>
-            <p style={{ fontSize: "14px", color: "#6b7280", margin: "4px 0 0 0" }}>
-              Download and analyze your trading session data
-            </p>
+              <FileText size={24} color={ACCENT} />
+            </div>
+            <div>
+              <h1 style={{ 
+                fontFamily: ORBITRON, fontSize: "28px", fontWeight: "bold", 
+                color: "white", margin: 0, letterSpacing: "2px" 
+              }}>
+                TRADING <span style={{ color: ACCENT }}>REPORTS</span>
+              </h1>
+              <p style={{ fontSize: "14px", color: "#6b7280", margin: "4px 0 0 0" }}>
+                Download and analyze your trading session data
+              </p>
+            </div>
           </div>
+          <button
+            onClick={() => window.print()}
+            style={{
+              padding: "10px 20px",
+              background: `${ACCENT}20`,
+              border: `1px solid ${ACCENT}40`,
+              color: ACCENT,
+              fontFamily: ORBITRON,
+              fontSize: "12px",
+              fontWeight: "bold",
+              cursor: "pointer",
+              letterSpacing: "1px",
+              textTransform: "uppercase"
+            }}
+          >
+            Export to PDF
+          </button>
         </div>
 
         {/* Stats Cards */}
@@ -351,6 +378,96 @@ const Reports = () => {
             color={ACCENT}
           />
         </div>
+
+        {/* Visual Analytics */}
+        {reports.length > 0 && (
+          <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: "16px", marginBottom: "8px" }}>
+            <GenesisPanel title="CUMULATIVE PORTFOLIO EQUITY CURVE">
+              <div style={{ height: "180px", display: "flex", justifyContent: "center", alignItems: "center", position: "relative", padding: "10px" }}>
+                <svg width="100%" height="100%">
+                  <line x1="0" y1="90" x2="100%" y2="90" stroke="rgba(255,255,255,0.05)" />
+                  <polyline
+                    fill="none"
+                    stroke={ACCENT}
+                    strokeWidth="3"
+                    points={(() => {
+                      const sorted = [...reports].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                      let cum = 0;
+                      const pts = sorted.map(r => {
+                        cum += r.totalPnl || 0;
+                        return cum;
+                      });
+                      const max = Math.max(10, ...pts.map(Math.abs));
+                      const min = -max;
+                      return pts.map((val, idx) => {
+                        const xPercent = (idx / Math.max(1, pts.length - 1)) * 100;
+                        const y = 90 - (val / max) * 70;
+                        return `${xPercent}%,${y}`;
+                      }).join(" ");
+                    })()}
+                    style={{ vectorEffect: "non-scaling-stroke" }}
+                  />
+                </svg>
+                <div style={{ position: "absolute", bottom: "4px", fontSize: "10px", color: "#64748b", fontFamily: ORBITRON }}>CHRONOLOGICAL SESSIONS</div>
+                <div style={{ position: "absolute", left: "4px", top: "4px", fontSize: "10px", color: ACCENT, fontFamily: ORBITRON }}>EQUITY ($)</div>
+              </div>
+            </GenesisPanel>
+
+            <GenesisPanel title="SESSION PNL FREQUENCY DISTRIBUTION">
+              <div style={{ height: "180px", display: "flex", justifyContent: "center", alignItems: "center", position: "relative", padding: "10px" }}>
+                <svg width="100%" height="100%">
+                  {(() => {
+                    const bins = { loss_large: 0, loss_small: 0, win_small: 0, win_large: 0 };
+                    reports.forEach(r => {
+                      const p = r.totalPnl || 0;
+                      if (p < -20) bins.loss_large++;
+                      else if (p < 0) bins.loss_small++;
+                      else if (p < 20) bins.win_small++;
+                      else bins.win_large++;
+                    });
+                    const maxCount = Math.max(...Object.values(bins), 1);
+                    const labels = ["<-$20", "-$20 to $0", "$0 to $20", ">$20"];
+                    const colors = [RED, "rgba(255, 50, 50, 0.5)", "rgba(0, 255, 127, 0.5)", ACCENT];
+                    return Object.entries(bins).map(([key, val], idx) => {
+                      const height = (val / maxCount) * 120;
+                      const x = 12 + idx * 22;
+                      return (
+                        <g key={key}>
+                          <rect
+                            x={`${x}%`}
+                            y={140 - height}
+                            width="14%"
+                            height={height}
+                            fill={colors[idx]}
+                          />
+                          <text
+                            x={`${x + 7}%`}
+                            y="155"
+                            fill="#64748b"
+                            fontSize="9"
+                            textAnchor="middle"
+                            fontFamily={ORBITRON}
+                          >
+                            {labels[idx]}
+                          </text>
+                          <text
+                            x={`${x + 7}%`}
+                            y={130 - height}
+                            fill="white"
+                            fontSize="10"
+                            textAnchor="middle"
+                          >
+                            {val}
+                          </text>
+                        </g>
+                      );
+                    });
+                  })()}
+                </svg>
+              </div>
+            </GenesisPanel>
+          </div>
+        )}
 
         {/* Reports Table */}
         <GenesisPanel title="SESSION REPORTS" style={{ flex: 1 }}>

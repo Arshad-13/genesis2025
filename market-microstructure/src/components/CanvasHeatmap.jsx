@@ -194,9 +194,14 @@ export default function CanvasHeatmap({
   return (
     <div
       ref={containerRef}
-      style={{ position: "relative", overflow: "hidden", width: '100%' }}
+      style={{
+        transform: "scale(0.9)",
+        transformOrigin: "top left",
+        width: "111%",
+        height: "100%",
+      }}
     >
-      <h4
+      {/* <h4
         style={{
           margin: "0 0 12px 0",
           fontSize: "0.875rem",
@@ -209,7 +214,7 @@ export default function CanvasHeatmap({
         }}
       >
         Market Depth L2
-      </h4>
+      </h4> */}
       <canvas
         ref={canvasRef}
         onMouseMove={handleMouseMove}
