@@ -110,6 +110,7 @@ const MarketPredict = () => {
     const [history, setHistory] = useState({ trades: [] });
     const [throttle, setThrottle] = useState(false);
     const [mode, setMode] = useState("UNKNOWN");
+    const [predHistory, setPredHistory] = useState([]);
 
     // REFS
     const chartRef = useRef(null);
@@ -131,8 +132,8 @@ const MarketPredict = () => {
 
             ws.onopen = () => {
                 setStatus(s => ({ ...s, connected: true }));
-                fetch(`${BACKEND_HTTP}/replay/${sessionIdRef.current}/start`, { method: 'POST' }).catch(console.error);
-                fetch(`${BACKEND_HTTP}/metrics`).then(r => r.json()).then(d => setMode(d.mode || "UNKNOWN")).catch(console.error);
+                fetch(`${BACKEND_HTTP}/replay/${sessionIdRef.current}/start`, { method: 'POST', credentials: 'include' }).catch(console.error);
+                fetch(`${BACKEND_HTTP}/metrics`, { credentials: 'include' }).then(r => r.json()).then(d => setMode(d.mode || "UNKNOWN")).catch(console.error);
             };
 
             ws.onmessage = (e) => {
@@ -186,6 +187,10 @@ const MarketPredict = () => {
                     prediction: latest.prediction || d.prediction || { up: 0, neutral: 0, down: 0 }
                 }));
 
+                if (latest.prediction) {
+                    setPredHistory(p => [...p, latest.prediction].slice(-100));
+                }
+
                 if (latest.strategy?.pnl) {
                     setStats(s => ({
                         ...s,
@@ -209,7 +214,7 @@ const MarketPredict = () => {
         const action = status.active ? 'stop' : 'start';
         const url = `${BACKEND_HTTP}/strategy/${sessionIdRef.current}/${action}`;
         try {
-            const response = await fetch(url, { method: 'POST' });
+            const response = await fetch(url, { method: 'POST', credentials: 'include' });
             const result = await response.json();
             setStatus(s => ({ ...s, active: result.is_active }));
         } catch (error) {
@@ -219,7 +224,7 @@ const MarketPredict = () => {
     const reset = async () => {
         const BACKEND_HTTP = import.meta.env.VITE_BACKEND_HTTP || "http://localhost:8000";
         try {
-            await fetch(`${BACKEND_HTTP}/strategy/${sessionIdRef.current}/reset`, { method: 'POST' });
+            await fetch(`${BACKEND_HTTP}/strategy/${sessionIdRef.current}/reset`, { method: 'POST', credentials: 'include' });
             setStats({ realized: 0, unrealized: 0, total: 0, position: 0 });
             setHistory({ trades: [] });
             chartRef.current?.reset();
@@ -345,7 +350,7 @@ const MarketPredict = () => {
                                     <span style={{ fontSize: "9px", color: "#6b7280", marginBottom: "4px" }}>ANALYSIS</span>
                                     <span style={{ fontFamily: ORBITRON, fontSize: "24px", fontWeight: "900", color: sigColor }}>{signal}</span>
                                 </div>
-                                <div style={{ flex: 1, padding: "0 16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                                <div style={{ flex: 1, padding: "0 16px", display: "flex", flexDirection: "column", gap: "4px" }}>
                                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", fontFamily: MONO, color: "#9ca3af" }}>
                                         <span>PROBABILITY DISTRIBUTION</span>
                                         <span>{(Math.max(pred.up, pred.neutral, pred.down) * 100).toFixed(1)}% CONFIDENCE</span>
@@ -355,6 +360,19 @@ const MarketPredict = () => {
                                         <div style={{ background: "#6b7280", width: `${(pred.neutral || 0) * 100}%`, transition: "all 0.3s" }} />
                                         <div style={{ background: "#f87171", width: `${(pred.down || 0) * 100}%`, transition: "all 0.3s" }} />
                                     </div>
+                                    <svg width="100%" height="24" style={{ background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "2px", marginTop: "4px" }}>
+                                        {predHistory.map((p, idx) => {
+                                            const x = (idx / 100) * 100;
+                                            const upH = (p.up || 0) * 20;
+                                            const downH = (p.down || 0) * 20;
+                                            return (
+                                                <g key={idx}>
+                                                    <rect x={`${x}%`} y={24 - upH} width="1.5" height={upH} fill="#4ade80" opacity={0.7} />
+                                                    <rect x={`${x}%`} y="0" width="1.5" height={downH} fill="#f87171" opacity={0.7} />
+                                                </g>
+                                            );
+                                        })}
+                                    </svg>
                                 </div>
                             </div>
                         </GenesisPanel>

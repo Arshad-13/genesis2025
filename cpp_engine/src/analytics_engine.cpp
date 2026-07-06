@@ -78,24 +78,6 @@ ProcessedSnapshot AnalyticsEngine::processSnapshot(const Snapshot& snapshot) {
         result.set_obi(obi);
     }
     
-    // Calculate microprice - simplified
-    double microprice = snapshot.mid_price();
-    if (total_vol > 1e-9) {
-        microprice = (best_bid_q * best_ask_px + best_ask_q * best_bid_px) / total_vol;
-    }
-    result.set_microprice(microprice);
-    
-    // Calculate divergence
-    double divergence = microprice - snapshot.mid_price();
-    result.set_divergence(divergence);
-    
-    // Calculate directional probability - simplified
-    double directional_prob = 50.0; // Default neutral
-    if (std::abs(divergence) > 0.01) {
-        directional_prob = divergence > 0 ? 60.0 : 40.0; // Simple bias
-    }
-    result.set_directional_prob(directional_prob);
-    
     // Simple regime classification
     if (result.spread() > avg_spread * 2) {
         result.set_regime(1);

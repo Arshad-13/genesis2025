@@ -56,9 +56,8 @@ export default function Dashboard() {
 
       const response = await fetch(`${BACKEND_HTTP}/mode`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include',
         body: JSON.stringify(payload),
       });
 
@@ -135,10 +134,10 @@ export default function Dashboard() {
         
         // Auto-start replay on connection (like ModelTest)
         if (currentMode === "REPLAY") {
-          fetch(`${BACKEND_HTTP}/replay/${sessionId}/start`, { 
-            method: 'POST',
-            headers: { "Authorization": `Bearer ${localStorage.getItem('auth_token')}` }
-          })
+            fetch(`${BACKEND_HTTP}/replay/${sessionId}/start`, {
+              method: 'POST',
+              credentials: 'include'
+            })
             .then(() => {
               console.log('✅ Replay auto-started');
               setReplayState("PLAYING");
@@ -236,9 +235,7 @@ export default function Dashboard() {
     try {
       const response = await fetch(`${BACKEND_HTTP}/replay/${sessionId}/${path}`, {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem('auth_token')}`
-        }
+        credentials: 'include'
       });
 
       if (!response.ok) {
@@ -283,9 +280,7 @@ export default function Dashboard() {
     try {
       const response = await fetch(`${BACKEND_HTTP}/replay/${sessionId}/goback/${seconds}`, {
         method: 'POST',
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem('auth_token')}`
-        }
+        credentials: 'include'
       });
       const result = await response.json();
 

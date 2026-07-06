@@ -7,18 +7,46 @@ import json
 from collections import deque
 import logging
 
-# Add model_building/src to path to import model.py
-sys.path.append(os.path.join(os.path.dirname(__file__), "../model_building/src"))
+_SELF_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(_SELF_DIR, "../model_building/src"))
+sys.path.append(os.path.join(_SELF_DIR, "model_building/src"))
 
 try:
     from model import DeepLOB
 except ImportError:
-    print("Warning: Could not import DeepLOB from model_building/src")
+    DeepLOB = None
+    logging.getLogger(__name__).warning("DeepLOB model not available — inference disabled")
 
 logger = logging.getLogger(__name__)
 
+FEATURE_NAMES = []
+for i in range(1, 11):
+    FEATURE_NAMES.extend([
+        f"Bid Price L{i}",
+        f"Bid Vol L{i}",
+        f"Ask Price L{i}",
+        f"Ask Vol L{i}"
+    ])
+
 class ModelInference:
-    def __init__(self, model_path="../model_building/checkpoints/best_deeplob_fold5.pth", scaler_path="../model_building/checkpoints/scaler_params.json"):
+    def __init__(self, model_path=None, scaler_path=None):
+        if model_path is None:
+            for candidate in ("../model_building/checkpoints/best_deeplob_fold5.pth",
+                              "model_building/checkpoints/best_deeplob_fold5.pth"):
+                if os.path.exists(os.path.join(_SELF_DIR, candidate)):
+                    model_path = os.path.join(_SELF_DIR, candidate)
+                    break
+        if scaler_path is None:
+            for candidate in ("../model_building/checkpoints/scaler_params.json",
+                              "model_building/checkpoints/scaler_params.json"):
+                if os.path.exists(os.path.join(_SELF_DIR, candidate)):
+                    scaler_path = os.path.join(_SELF_DIR, candidate)
+                    break
+
+        if model_path is None or scaler_path is None:
+            logger.warning("Model or scaler not found — inference disabled")
+            self.model = None
+            return
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         logger.info(f"Inference Service using device: {self.device}")
         
@@ -118,9 +146,37 @@ class ModelInference:
         input_np = np.array(list(self.session_buffers[session_id]))
         input_tensor = torch.FloatTensor(input_np).unsqueeze(0).unsqueeze(0).to(self.device)
         
-        with torch.no_grad():
-            output = self.model(input_tensor)
-            probs = torch.softmax(output, dim=1).cpu().numpy()[0]
+        # Calculate prediction and saliency
+        top_features = []
+        try:
+            with torch.enable_grad():
+                input_tensor_grad = input_tensor.clone().detach().requires_grad_(True)
+                output = self.model(input_tensor_grad)
+                probs_tensor = torch.softmax(output, dim=1)
+                probs = probs_tensor.detach().cpu().numpy()[0]
+                
+                max_class_idx = int(torch.argmax(probs_tensor[0]))
+                self.model.zero_grad()
+                probs_tensor[0, max_class_idx].backward()
+                
+                grads = input_tensor_grad.grad.data.abs().squeeze().cpu().numpy()
+                feature_importance = np.mean(grads, axis=0)
+                
+                importance_sum = np.sum(feature_importance)
+                if importance_sum > 1e-8:
+                    feature_importance = feature_importance / importance_sum
+                
+                top_indices = np.argsort(feature_importance)[-5:][::-1]
+                top_features = [
+                    {"name": FEATURE_NAMES[idx], "weight": float(feature_importance[idx])}
+                    for idx in top_indices
+                ]
+        except Exception as grad_err:
+            logger.warning(f"Failed to calculate saliency: {grad_err}")
+            # Fallback to no-grad forward pass
+            with torch.no_grad():
+                output = self.model(input_tensor)
+                probs = torch.softmax(output, dim=1).cpu().numpy()[0]
         
         # Update last inference time
         self.last_inference_time[session_id] = current_time
@@ -129,7 +185,8 @@ class ModelInference:
         return {
             "down": float(probs[0]),
             "neutral": float(probs[1]),
-            "up": float(probs[2])
+            "up": float(probs[2]),
+            "top_features": top_features
         }
     
     def predict_batch(self, session_snapshots: dict):
@@ -138,7 +195,7 @@ class ModelInference:
         Args:
             session_snapshots: {session_id: snapshot}
         Returns:
-            {session_id: {up, neutral, down}} for ready sessions
+            {session_id: {up, neutral, down, top_features}} for ready sessions
         """
         if self.model is None:
             return {}
@@ -183,9 +240,36 @@ class ModelInference:
         try:
             batch_tensor = torch.FloatTensor(np.array(batch_inputs)).unsqueeze(1).to(self.device)
             
-            with torch.no_grad():
-                outputs = self.model(batch_tensor)
-                probs_batch = torch.softmax(outputs, dim=1).cpu().numpy()
+            top_features_batch = {}
+            try:
+                with torch.enable_grad():
+                    batch_tensor_grad = batch_tensor.clone().detach().requires_grad_(True)
+                    outputs = self.model(batch_tensor_grad)
+                    probs_batch_tensor = torch.softmax(outputs, dim=1)
+                    probs_batch = probs_batch_tensor.detach().cpu().numpy()
+                    
+                    for idx, session_id in enumerate(session_ids_order):
+                        max_class_idx = int(np.argmax(probs_batch[idx]))
+                        self.model.zero_grad()
+                        probs_batch_tensor[idx, max_class_idx].backward(retain_graph=True)
+                        grads = batch_tensor_grad.grad.data[idx].abs().squeeze().cpu().numpy()
+                        feature_importance = np.mean(grads, axis=0)
+                        
+                        importance_sum = np.sum(feature_importance)
+                        if importance_sum > 1e-8:
+                            feature_importance = feature_importance / importance_sum
+                        
+                        top_indices = np.argsort(feature_importance)[-5:][::-1]
+                        top_features_batch[session_id] = [
+                            {"name": FEATURE_NAMES[i], "weight": float(feature_importance[i])}
+                            for i in top_indices
+                        ]
+            except Exception as grad_err:
+                logger.warning(f"Failed to calculate batch saliency: {grad_err}")
+                top_features_batch = {sid: [] for sid in session_ids_order}
+                with torch.no_grad():
+                    outputs = self.model(batch_tensor)
+                    probs_batch = torch.softmax(outputs, dim=1).cpu().numpy()
             
             # Update results and timestamps
             for idx, session_id in enumerate(session_ids_order):
@@ -193,7 +277,8 @@ class ModelInference:
                 ready_sessions[session_id] = {
                     "down": float(probs[0]),
                     "neutral": float(probs[1]),
-                    "up": float(probs[2])
+                    "up": float(probs[2]),
+                    "top_features": top_features_batch.get(session_id, [])
                 }
                 self.last_inference_time[session_id] = current_time
             

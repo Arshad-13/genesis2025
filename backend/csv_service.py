@@ -1,19 +1,28 @@
 import csv
 import os
-import boto3
 from datetime import datetime
 from typing import List, Dict, Optional
 import logging
 
 logger = logging.getLogger(__name__)
 
+try:
+    import boto3
+    _has_boto3 = True
+except ImportError:
+    boto3 = None
+    _has_boto3 = False
+
 class CSVReportService:
     def __init__(self):
         self.s3_client = None
         self.bucket_name = os.getenv('S3_BUCKET_NAME')
         self.reports_dir = "reports"
-        
-        # Initialize S3 client if credentials are available
+
+        if not _has_boto3:
+            logger.info("boto3 not installed, S3 uploads disabled")
+            return
+
         try:
             if all([os.getenv('AWS_ACCESS_KEY_ID'), os.getenv('AWS_SECRET_ACCESS_KEY'), self.bucket_name]):
                 self.s3_client = boto3.client(

@@ -1,15 +1,29 @@
 services:
   timescaledb:
-    image: timescale/timescaledb:latest-pg14
+    image: timescale/timescaledb:2.14.2-pg14
     container_name: timescaledb
     ports:
       - "5433:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: trading_hub
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-trading_hub}
     volumes:
-      - tsdata:/var/lib/postgresql/data  # Separate volume for TimescaleDB
+      - tsdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-trading_hub}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2"
+        reservations:
+          memory: 512M
+          cpus: "0.5"
 
   cpp-analytics:
     build:
@@ -19,28 +33,93 @@ services:
     ports:
       - "50051:50051"
     restart: unless-stopped
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 3 bash -c '</dev/tcp/localhost/50051' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1"
+        reservations:
+          memory: 256M
+          cpus: "0.25"
 
   market-ingestor:
     build:
       context: ../market_ingestor
+      dockerfile: Dockerfile
     container_name: market-ingestor
     ports:
       - "6000:6000"
     restart: unless-stopped
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import grpc; grpc.insecure_channel('localhost:6000').close()\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1"
+        reservations:
+          memory: 128M
+          cpus: "0.25"
 
-  postgres:
-    image: postgres:15-alpine
-    container_name: trading_hub_db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: trading_hub
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: genesis-backend
     ports:
-      - "5432:5432"
-    volumes:
-    - pgdata:/var/lib/postgresql/data
-    
+      - "8000:8000"
+    restart: unless-stopped
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      cpp-analytics:
+        condition: service_started
+      market-ingestor:
+        condition: service_started
+    environment:
+      USE_CPP_ENGINE: "true"
+      CPP_ENGINE_HOST: cpp-analytics
+      CPP_ENGINE_PORT: "50051"
+      MARKET_INGESTOR_HOST: market-ingestor
+      MARKET_INGESTOR_PORT: "6000"
+      DB_HOST: timescaledb
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-trading_hub}
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@timescaledb:5432/${POSTGRES_DB:-trading_hub}
+      SECRET_KEY: ${SECRET_KEY}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2"
+        reservations:
+          memory: 1G
+          cpus: "0.5"
 
 volumes:
-  tsdata:  
-  pgdata:
+  tsdata:

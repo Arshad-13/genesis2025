@@ -58,38 +58,30 @@ See our complete cloud architecture below: [Cloud Deployment](#%EF%B8%8F-cloud-d
 - **Real-time predictions** with 100-snapshot rolling window
 
 <img src="./assets/deeplob.png" width="500" alt="DeepLOB Architecture">
+### 💰 Automated Multi-Strategy Portfolio & Risk Management
+- **Portfolio Engine**: Concurrently runs 4 strategies: `MomentumBreakout` (OFI/momentum), `MeanReversion` (spread Z-score/VPIN), `SpoofingCounter` (order book wall fading), and `MarketMaking` (spread modeling).
+- **Risk Controls**: Configurable Stop-Loss (SL), Take-Profit (TP), position timeouts, and portfolio-wide cumulative drawdown circuit breakers.
+- **Detailed Tracking**: Live positions, realized/unrealized PnL breakdown per strategy, and active allocation charts.
 
-### 💰 Automated Paper Trading
-- **Strategy Engine**: Signal-based entry/exit with confidence thresholds
-- **Full PnL Tracking**: Realized, unrealized, and total
-- **Position Management**: LONG/SHORT with automatic exits
-- **59.6% win rate** in simulated trading
-- **START/STOP/RESET controls** via dashboard
+### 🔍 Advanced Surveillance, Alerts & Spoof Radar
+- **Spoof Radar**: Interactive depth profiles pointing out massive non-bona fide orders with real-time risk scores (0-100%).
+- **Custom Alert Engine**: Define dynamic threshold rules (e.g., `vpin > 0.6` or `spoofing_risk > 0.8`) persisted to Postgres/Timescale and broadcasted over WebSockets.
+- **Rule Evaluator**: Automatically flags events and renders anomaly timestamps on playback scrubber controls.
 
-### 📈 Professional Dashboard
-- **Real-time WebSocket streaming** with React 18
-- **Custom Canvas charts** for 60 FPS rendering (300+ data points)
-- **Live order book visualization** with depth bars
-- **Signal monitoring** with priority-sorted anomalies
-- **Trade execution log** with per-trade PnL
-- **Risk dashboard** with health scoring
+### 🧪 Microstructure Lab & Saliency Analysis
+- **Autograd Saliency**: Live backpropagation of DeepLOB predictions to output the top 5 driving order book features/levels.
+- **Correlation Heat Grid**: Live rolling 100-tick correlation matrix of microstructure indicators.
+- **SVG Scatter Visualizer**: Live scatter plots showing relationships (e.g., OFI vs. Mid Price Divergence).
 
-<img src="./assets/Dashboard.png" width="600" alt="Dashboard Preview">
+### 📈 Professional Dashboards
+- **New Page Layouts**: Integrated 3 new pages: **Strategy Arena** (quantitative A/B tuning), **Surveillance Dashboard** (spoof wall radar + alerts rules), and **Microstructure Lab** (saliency + correlation grids).
+- **Interactive Scrubber**: Timeline range input with anomaly event ticks.
+- **Reports Export**: Dynamic equity line curves, session PnL histograms, and print-ready PDF export template.
+- **Demo Login Autofill**: Seamless testing with a dashed autofill card on the login screen.
 
-### 💾 Time-Series Database
-- **PostgreSQL + TimescaleDB**: 1.3M+ snapshots stored
-- **8:1 compression ratio** with automatic data retention
-- **42ms query time** for 1-hour data ranges
-- **Optimized for high-frequency inserts** (160/sec sustained)
-
-### 📑 Post-Trade Report Generation
-
-- **Session-level performance tracking**: Aggregate PnL, win rates, and trade counts
-- **Detailed historical logs**: Timestamped records for every trading session
-- **Duration Analytics**: Track average session length and individual execution times
-- **Data Export**: Direct download buttons for session data and CSV reports
-
-<img src="./assets/report.jpeg" width="600" alt="Report Generation Preview">
+### 💾 Time-Series Database & Automated Setup
+- **PostgreSQL + TimescaleDB**: 1.3M+ snapshots stored with an 8:1 compression ratio.
+- **Automated Init Scripts**: `init_database.sh` (Linux/macOS) and `init_database.ps1` (Windows) copy the 1.16 GB dataset, construct hypertable partitions, bulk import, and build indices.
 
 ---
 
@@ -171,42 +163,38 @@ See our complete cloud architecture below: [Cloud Deployment](#%EF%B8%8F-cloud-d
 ## 🚀 Quick Start
 
 ### Prerequisites
-- **Python 3.11+**
-- **Node.js 16+**
 - **Docker & Docker Compose**
-- **PostgreSQL 14+** (or use Docker)
-- **NVIDIA GPU** (optional, for ML inference)
+- **Node.js 18+** & **npm**
 
-### 1️⃣ Clone Repository
+### 1️⃣ Clone Repository & Verify Checkpoints
 ```bash
 git clone https://github.com/yourusername/genesis2025.git
 cd genesis2025
 ```
+Make sure `model_building/checkpoints/best_deeplob_fold5.pth` and `scaler_params.json` are placed in the `model_building/checkpoints/` folder.
 
-### 2️⃣ Start Database & C++ Engine
+### 2️⃣ Spin Up the Backend Stack (Docker)
 ```bash
 cd backend
-docker-compose up -d
-# Starts: PostgreSQL, TimescaleDB, C++ Analytics Engine
+docker compose up -d --build
+# Starts: TimescaleDB, C++ Analytics Engine, Live Ingestor, and FastAPI Backend
 ```
 
-### 3️⃣ Start Market Data Ingestor (LIVE Mode)
-```bash
-cd market_ingestor
-pip install -r requirements.txt
-python main.py
-# gRPC server starts on port 6000
-```
+### 3️⃣ Initialize the Database
+Run the database initialization script from the project root:
+- **On Linux / macOS:**
+  ```bash
+  cd ../
+  chmod +x init_database.sh
+  ./init_database.sh
+  ```
+- **On Windows (PowerShell):**
+  ```powershell
+  cd ../
+  powershell -ExecutionPolicy Bypass -File ./init_database.ps1
+  ```
 
-### 4️⃣ Start Backend
-```bash
-cd backend
-pip install -r requirements.txt
-python main.py
-# Backend starts on http://localhost:8000
-```
-
-### 5️⃣ Start Frontend
+### 4️⃣ Start Frontend
 ```bash
 cd market-microstructure
 npm install
@@ -214,12 +202,10 @@ npm run dev
 # Dashboard opens at http://localhost:5173
 ```
 
-### 6️⃣ Access Dashboard
-Open **http://localhost:5173** in your browser and:
-- Click **LIVE** to stream real-time Binance data
-- Select symbol (BTC/USDT, ETH/USDT, SOL/USDT)
-- Click **START** to activate paper trading strategy
-- Monitor anomalies, predictions, and PnL in real-time
+### 5️⃣ Access Dashboard
+Open **http://localhost:5173** in your browser:
+- Click the **"CLICK TO AUTOFILL DEMO ACCOUNT"** card at the bottom of the login screen and click **"Sign In"**.
+- Use the sidebar navigation to explore the new **Strategy Arena**, **Surveillance Dashboard**, and **Microstructure Lab**.
 
 ---
 

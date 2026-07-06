@@ -8,6 +8,9 @@ import Dashboard from './pages/Dashboard';
 import Home from './pages/Home'; // Assuming you have a Home page
 import MarketPredict from './pages/MarketPredict';
 import Reports from './pages/Reports';
+import StrategyArena from './pages/StrategyArena';
+import SurveillanceDashboard from './pages/SurveillanceDashboard';
+import MicrostructureLab from './pages/MicrostructureLab';
 
 function App() {
   return (
@@ -55,6 +58,39 @@ function App() {
                 <ProtectedRoute>
                   <ErrorBoundary fallbackMessage="Error loading Reports page.">
                     <Reports />
+                  </ErrorBoundary>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/strategy-arena"
+              element={
+                <ProtectedRoute>
+                  <ErrorBoundary fallbackMessage="Error loading Strategy Arena.">
+                    <StrategyArena />
+                  </ErrorBoundary>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/surveillance"
+              element={
+                <ProtectedRoute>
+                  <ErrorBoundary fallbackMessage="Error loading Surveillance Dashboard.">
+                    <SurveillanceDashboard />
+                  </ErrorBoundary>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/lab"
+              element={
+                <ProtectedRoute>
+                  <ErrorBoundary fallbackMessage="Error loading Microstructure Lab.">
+                    <MicrostructureLab />
                   </ErrorBoundary>
                 </ProtectedRoute>
               }

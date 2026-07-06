@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BarChart3, TrendingDown, X, User, Home, FileText } from "lucide-react";
+import { BarChart3, TrendingDown, X, User, Home, FileText, Sliders, ShieldAlert, Activity, LogOut } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { LogOut } from "lucide-react";
 import Toast from './Toast';
 
 export default function Sidebar({ isOpen, onClose, activePage = "home" }) {
@@ -22,6 +21,27 @@ export default function Sidebar({ isOpen, onClose, activePage = "home" }) {
       icon: TrendingDown,
       label: "Market Predict",
       path: "/market-predict",
+      active: false,
+    },
+    {
+      id: "strategy-arena",
+      icon: Sliders,
+      label: "Strategy Arena",
+      path: "/strategy-arena",
+      active: false,
+    },
+    {
+      id: "surveillance",
+      icon: ShieldAlert,
+      label: "Surveillance",
+      path: "/surveillance",
+      active: false,
+    },
+    {
+      id: "lab",
+      icon: Activity,
+      label: "Microstructure Lab",
+      path: "/lab",
       active: false,
     },
     {

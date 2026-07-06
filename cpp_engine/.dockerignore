@@ -1,0 +1,10 @@
+build/
+.git/
+.gitignore
+*.o
+*.obj
+*.log
+.DS_Store
+Thumbs.db
+CMakeCache.txt
+cmake-build-*/

@@ -1,0 +1,16 @@
+{
+  "plugin": [
+    ".opencode/plugins/graphify.js"
+  ],
+  "skills": [
+    ".opencode/skills/project-context",
+    ".opencode/skills/backend-python",
+    ".opencode/skills/frontend-react",
+    ".opencode/skills/database-sql",
+    ".opencode/skills/docker-devops",
+    ".opencode/skills/cpp-engine",
+    ".opencode/skills/financial-systems",
+    ".opencode/skills/grpc-protobuf",
+    ".opencode/skills/token-efficiency"
+  ]
+}

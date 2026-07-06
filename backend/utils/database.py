@@ -21,6 +21,9 @@ Base = declarative_base()
 
 # Dependency
 def get_db():
+    from fastapi import HTTPException
+    if SessionLocal is None:
+        raise HTTPException(status_code=503, detail="Database not configured")
     db = SessionLocal()
     try:
         yield db

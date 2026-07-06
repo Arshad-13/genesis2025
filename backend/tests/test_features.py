@@ -39,24 +39,7 @@ def test_liquidity_gaps_with_metrics():
     
     # Check for liquidity gap anomalies
     gap_anomalies = [a for a in result.get('anomalies', []) if a['type'] == 'LIQUIDITY_GAP']
-    
-    print("✅ Liquidity Gap Detection: WORKING")
-    if gap_anomalies:
-        for gap in gap_anomalies:
-            print(f"   - {gap['message']}")
-            print(f"   - Severity: {gap['severity']}")
-            print(f"   - Gap count: {gap.get('gap_count', 'N/A')}")
-            print(f"   - Gap severity score: {gap.get('gap_severity_score', 'N/A')}")
-    
-    # Check graphing metrics
-    print(f"   - Snapshot gap_count: {result.get('gap_count', 'N/A')}")
-    print(f"   - Snapshot gap_severity_score: {result.get('gap_severity_score', 'N/A')}")
-    print(f"   - Snapshot liquidity_gaps: {len(result.get('liquidity_gaps', []))} gaps")
-    if result.get('liquidity_gaps'):
-        for gap in result.get('liquidity_gaps', [])[:2]:  # Show first 2
-            print(f"     * {gap['side'].upper()} ${gap['price']:.2f} Vol:{gap['volume']} Risk:{gap['risk_score']:.0f}%")
-    
-    return len(gap_anomalies) > 0
+    assert len(gap_anomalies) > 0, "Expected at least one liquidity gap anomaly"
 
 def test_spoofing_with_risk_metrics():
     """Test spoofing detection with risk probability"""
@@ -88,21 +71,7 @@ def test_spoofing_with_risk_metrics():
     
     # Check for spoofing anomalies
     spoof_anomalies = [a for a in result2.get('anomalies', []) if a['type'] == 'SPOOFING']
-    
-    print("✅ Spoofing Detection: WORKING")
-    if spoof_anomalies:
-        for spoof in spoof_anomalies:
-            print(f"   - {spoof['message']}")
-            print(f"   - Severity: {spoof['severity']}")
-            print(f"   - Side: {spoof.get('side', 'N/A')}")
-            print(f"   - Volume ratio: {spoof.get('volume_ratio', 'N/A'):.1f}x")
-            print(f"   - Spoofing risk: {spoof.get('spoofing_risk', 'N/A'):.1f}%")
-    
-    # Check graphing metrics
-    print(f"   - Snapshot spoofing_risk: {result2.get('spoofing_risk', 'N/A'):.1f}%")
-    print(f"   - Volume volatility: {result2.get('volume_volatility', 'N/A'):.4f}")
-    
-    return len(spoof_anomalies) > 0
+    assert len(spoof_anomalies) > 0, "Expected at least one spoofing anomaly"
 
 def test_risk_progression():
     """Test risk metrics over multiple snapshots"""
@@ -129,13 +98,10 @@ def test_risk_progression():
         result = engine.process_snapshot(snapshot)
         risks.append(result.get('spoofing_risk', 0))
         gaps.append(result.get('gap_count', 0))
-        
-        print(f"   {snapshot['timestamp']}: Risk={result.get('spoofing_risk', 0):.1f}%, Gaps={result.get('gap_count', 0)}")
-    
-    print(f"   Risk progression: {' → '.join([f'{r:.0f}%' for r in risks])}")
-    print(f"   Gap progression: {' → '.join([str(g) for g in gaps])}")
-    
-    return True
+
+    assert len(risks) == 4, "Should track risk for all 4 snapshots"
+    assert len(set(risks)) >= 2, f"Risk values should vary across snapshots, got: {risks}"
+    assert gaps[-1] > gaps[0], f"Expected gap count to increase, got: {gaps}"
 
 def main():
     print("🚀 Testing Enhanced Market Microstructure Features")

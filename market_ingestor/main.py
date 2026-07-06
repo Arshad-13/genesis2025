@@ -1,4 +1,5 @@
 import asyncio
+import signal
 from datetime import datetime
 import grpc
 import time
@@ -54,6 +55,7 @@ class LiveFeedServicer(live_pb2_grpc.LiveFeedServiceServicer):
         self.queue = SmartQueue(maxsize=0)  # Unlimited queue for LIVE mode
         self.current_client = None
         self.current_symbol = None
+        self.current_task = None  # Track the streaming task
 
     async def ChangeSymbol(self, request, context):
         """Change the symbol being streamed"""
@@ -75,10 +77,14 @@ class LiveFeedServicer(live_pb2_grpc.LiveFeedServiceServicer):
 
     async def _start_client(self, symbol):
         """Start a new Binance client for the given symbol"""
-        if self.current_client:
-            # Stop existing client if any
-            # Note: WebSocket will be closed when the task is cancelled
-            pass
+        if self.current_task and not self.current_task.done():
+            # Stop existing client streaming task
+            self.current_task.cancel()
+            try:
+                await self.current_task
+            except asyncio.CancelledError:
+                pass
+            print(f"[MARKET_INGESTOR] Cancelled previous streaming task")
             
         self.current_symbol = symbol.lower()
         self.current_client = BinanceDepthClient(self.current_symbol)
@@ -91,7 +97,7 @@ class LiveFeedServicer(live_pb2_grpc.LiveFeedServiceServicer):
                 break
         
         # Start streaming
-        asyncio.create_task(self.current_client.stream(self.queue))
+        self.current_task = asyncio.create_task(self.current_client.stream(self.queue))
         print(f"[MARKET_INGESTOR] Started streaming {symbol}")
 
     async def StreamSnapshots(self, request, context):
@@ -142,9 +148,18 @@ async def serve():
     await server.start()
     print("[MARKET_INGESTOR] gRPC server started on port 6000")
 
-    await server.wait_for_termination()
+    try:
+        await server.wait_for_termination()
+    except asyncio.CancelledError:
+        print("[MARKET_INGESTOR] Shutting down...")
+        await server.stop(grace=None)
+        await asyncio.sleep(0.5)
+        print("[MARKET_INGESTOR] Shutdown complete")
 
 
 if __name__ == "__main__":
     print("[MARKET_INGESTOR] Starting market data ingestor...")
-    asyncio.run(serve())
+    try:
+        asyncio.run(serve())
+    except KeyboardInterrupt:
+        pass

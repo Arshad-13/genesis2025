@@ -16,14 +16,13 @@ pytest-asyncio
 pytest-cov
 httpx
 python-dotenv
-torch
 
 # Authentication & Security
 python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
 pydantic[email]
-psycopg2-binary
+psycopg[binary]
 alembic
 
 # storage s3

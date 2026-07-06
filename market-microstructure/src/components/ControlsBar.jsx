@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Download, SkipBack, FastForward, Pause, Settings, Clock, FileText, FileJson, Play } from 'lucide-react';
+import { useAuth } from "../contexts/AuthContext";
 
 export default function ControlsBar({
   onPlay,
@@ -17,6 +18,7 @@ export default function ControlsBar({
   showToast,
   data = []
 }) {
+  const { sessionId } = useAuth();
   const [speed, setSpeed] = useState(currentSpeed);
   const [speedUpValue, setSpeedUpValue] = useState(2);
   const [goBackSeconds, setGoBackSeconds] = useState(1);
@@ -25,6 +27,49 @@ export default function ControlsBar({
   const [tempGoBack, setTempGoBack] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const [metadata, setMetadata] = useState(null);
+
+  useEffect(() => {
+    if (currentMode === "REPLAY" && sessionId) {
+      const BACKEND_HTTP = import.meta.env.VITE_BACKEND_HTTP || "http://localhost:8000";
+      fetch(`${BACKEND_HTTP}/replay/${sessionId}/metadata`, { credentials: 'include' })
+        .then(r => r.json())
+        .then(d => {
+          if (d.status === "success") setMetadata(d);
+        })
+        .catch(console.error);
+    }
+  }, [currentMode, sessionId]);
+
+  const handleSeek = (val) => {
+    if (!metadata || !sessionId) return;
+    const startMs = new Date(metadata.start_time).getTime();
+    const endMs = new Date(metadata.end_time).getTime();
+    const targetMs = startMs + (val / 100) * (endMs - startMs);
+    const targetIso = new Date(targetMs).toISOString();
+
+    const BACKEND_HTTP = import.meta.env.VITE_BACKEND_HTTP || "http://localhost:8000";
+    fetch(`${BACKEND_HTTP}/replay/${sessionId}/seek`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ timestamp: targetIso }),
+      credentials: 'include'
+    }).then(r => r.json())
+      .then(res => {
+        if (res.status === "success" && showToast) {
+          showToast(`Seeked to ${new Date(targetMs).toLocaleTimeString()}`, 'success');
+        }
+      }).catch(console.error);
+  };
+
+  const getSliderValue = () => {
+    if (!metadata || !currentTimestamp) return 0;
+    const startMs = new Date(metadata.start_time).getTime();
+    const endMs = new Date(metadata.end_time).getTime();
+    const currMs = new Date(currentTimestamp).getTime();
+    if (endMs === startMs) return 0;
+    return ((currMs - startMs) / (endMs - startMs)) * 100;
+  };
 
   const handlePlayPause = async () => {
     setIsLoading(true);
@@ -391,6 +436,51 @@ export default function ControlsBar({
           >
             <Settings size={18} />
           </button>
+        )}
+
+        {/* Timeline Scrubber */}
+        {currentMode === "REPLAY" && metadata && (
+          <div style={{ width: "100%", marginTop: "12px", display: "flex", flexDirection: "column", gap: "4px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "9px", color: "#64748b", fontFamily: "'Orbitron', monospace" }}>
+              <span>{formatTimestamp(metadata.start_time)}</span>
+              <span>{formatTimestamp(metadata.end_time)}</span>
+            </div>
+            <div style={{ position: "relative", width: "100%", height: "20px", display: "flex", alignItems: "center" }}>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={getSliderValue()}
+                onChange={(e) => handleSeek(parseFloat(e.target.value))}
+                style={{ width: "100%", accentColor: "#00ff7f", cursor: "pointer", height: "4px", background: "rgba(255,255,255,0.1)", outline: "none" }}
+              />
+              {metadata.anomaly_markers && metadata.anomaly_markers.map((mark, idx) => {
+                const startMs = new Date(metadata.start_time).getTime();
+                const endMs = new Date(metadata.end_time).getTime();
+                const markMs = new Date(mark).getTime();
+                const percent = ((markMs - startMs) / (endMs - startMs)) * 100;
+                if (percent >= 0 && percent <= 100) {
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        position: "absolute",
+                        left: `${percent}%`,
+                        top: "50%",
+                        transform: "translate(-50%, -50%)",
+                        width: "4px",
+                        height: "10px",
+                        background: "#ff3232",
+                        pointerEvents: "none"
+                      }}
+                      title="Anomaly Event"
+                    />
+                  );
+                }
+                return null;
+              })}
+            </div>
+          </div>
         )}
       </div>
 
